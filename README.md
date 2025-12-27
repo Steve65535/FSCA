@@ -1,183 +1,110 @@
-# FSCA CLI
+# FSCA CLI (Financial Smart Contract Architecture)
 
-链上智能合约集群开发工具的命令行界面。
+> 链上智能合约集群开发工具的命令行界面。
+> A revolutionary CLI for orchestrating on-chain smart contract clusters.
 
-## 框架结构
+## 核心理念
 
-本 CLI 工具采用模块化设计，包含以下核心组件：
+FSCA 旨在解决传统智能合约开发中的**不可变性**与业务**灵活性**之间的矛盾。它引入了 "Contract Cluster"（合约集群）的概念，类似于微服务架构。
 
-### 1. 命令行解析模块 (`cli/parser.js`)
-- 解析命令行参数
-- 支持树形结构的命令（子命令）
-- 支持 `--flag` 和 `--key=value` 格式的参数
-- 提供帮助信息生成功能
+*   **Cluster (集群)**:  一个业务系统的整体边界。
+*   **Pod (模块)**: 独立的合约单元，通过标准接口 (`NormalTemplate`) 构建。
+*   **Mount (挂载)**: 将 Pod 注册到 Cluster 的过程。挂载后的 Pod 受 `EvokerManager` 权限管控。
+*   **Link (链接)**: 在 Pod 之间建立逻辑连接（ID路由），支持热插拔。
 
-### 2. 命令执行模块 (`cli/executor.js`)
-- 加载和执行命令处理器
-- 支持 JavaScript 和 TypeScript 模块
-- 处理器缓存机制
+## 快速开始
 
-### 3. 命令配置 (`cli/commands.json`)
-- JSON 格式的命令定义
-- 树形结构，支持嵌套子命令
-- 每个命令可配置：
-  - `description`: 命令描述
-  - `handler`: 处理器路径
-  - `params`: 参数定义
-  - `usage`: 使用示例
-  - `commands`: 子命令
-
-### 4. 主入口 (`cli/index.js`)
-- 处理命令行参数
-- 协调解析器和执行器
-- 错误处理和帮助信息
-
-## 使用方法
-
-### 安装
+### 1. 安装
 
 ```bash
+npm install -g fsca-cli
+# 或者在源码目录
 npm link
-# 或者
-npm install -g .
 ```
 
-### 基本命令
+### 2. 初始化项目
 
 ```bash
-# 查看帮助
-fsca --help
-
-# 查看版本
-fsca --version
-
-# 初始化项目
+mkdir my-defi-project
+cd my-defi-project
 fsca init
-
-# 使用子命令
-fsca contract deploy --name MyContract --network mainnet
 ```
+*   这会初始化 Hardhat 环境，加载 FSCA 核心合约库，并生成 `project.json` 配置文件。
 
-## 添加新命令
+### 3. 工作流 (Workflow)
 
-### 1. 在 `cli/commands.json` 中添加命令定义
+FSCA 采用 **Deploy -> Choose -> Link -> Mount** 的标准化工作流。
 
-```json
-{
-  "commands": {
-    "mycommand": {
-      "description": "我的命令描述",
-      "handler": "./libs/mycommand",
-      "params": {
-        "param1": {
-          "type": "string",
-          "required": true,
-          "description": "参数1描述"
-        }
-      },
-      "usage": "fsca mycommand --param1 value"
-    }
-  }
-}
-```
-
-### 2. 创建处理器文件
-
-在 `libs/` 目录下创建对应的处理器文件（如 `libs/mycommand.js`）：
-
-```javascript
-/**
- * 命令处理器
- * @param {Object} context - 执行上下文
- * @param {Object} context.args - 解析后的参数
- * @param {string[]} context.subcommands - 子命令路径
- * @param {Object} context.config - 命令配置
- * @param {string} context.rootDir - 项目根目录
- */
-module.exports = async function mycommand({ args, subcommands, config, rootDir }) {
-  console.log('执行我的命令');
-  console.log('参数:', args);
-  // 你的命令逻辑
-};
-```
-
-### 3. 添加子命令
-
-```json
-{
-  "commands": {
-    "parent": {
-      "description": "父命令",
-      "commands": {
-        "child": {
-          "description": "子命令",
-          "handler": "./libs/parent/child"
-        }
-      }
-    }
-  }
-}
-```
-
-使用方式：`fsca parent child`
-
-## 参数类型
-
-支持以下参数类型：
-- `string`: 字符串（默认）
-- `number`: 数字
-- `boolean`: 布尔值
-- `array`: 数组（使用逗号分隔）
-
-## 参数格式
-
+#### Step 1: 部署合约 (Deploy)
+部署一个基于 `NormalTemplate` 的标准合约。
 ```bash
-# 标志参数
-fsca command --flag
+fsca deploy "MyLendingModule"
+```
+*   自动编译、部署、更新本地缓存。
+*   自动将新合约设为 `currentOperating` (当前操作对象)。
 
-# 键值对参数
-fsca command --key value
-fsca command --key=value
-
-# 数组参数
-fsca command --items item1,item2,item3
+#### Step 2: 选择操作对象 (Choose)
+如果你需要切换到其他已部署的合约进行操作：
+```bash
+fsca cluster choose <CONTRACT_ADDRESS>
 ```
 
-## 项目结构
+#### Step 3: 建立链接 (Link)
+在合约“上线”（挂载）之前，先配置好它与其他模块的连接。
+```bash
+# 链接一个主动调用模块 (Positive Link)
+fsca cluster link positive <TARGET_ADDRESS> <TARGET_ID>
+
+# 链接一个被动回调模块 (Passive Link)
+fsca cluster link passive <TARGET_ADDRESS> <TARGET_ID>
+```
+*   系统会自动检测合约状态 (`wetherMounted`) 并选择正确的链上接口。
+
+#### Step 4: 挂载上线 (Mount)
+将配置好的合约正式注册到集群中。
+```bash
+fsca cluster mount <ID> "MyLendingModule"
+```
+*   合约 ID 在集群内唯一。
+*   挂载后，合约正式纳入权限管理体系。
+
+#### Step 5: 下线维护 (Unmount) / 解除链接 (Unlink)
+```bash
+# 从集群卸载
+fsca cluster unmount <ID>
+
+# 解除链接 (仅限挂载后)
+fsca cluster unlink <TYPE> <TARGET_ADDRESS> <TARGET_ID>
+```
+
+## 命令参考
+
+### 基础命令
+*   `fsca init`: 初始化项目和环境。
+*   `fsca deploy <description>`: 部署标准模板合约。
+
+### 集群管理 (`fsca cluster`)
+*   `fsca cluster init`: 部署一个新的 ClusterManager（通常 `fsca init` 已包含）。
+*   `fsca cluster list mounted`: 列出当前挂载的所有合约。
+*   `fsca cluster list all`: 列出历史所有合约记录。
+*   `fsca cluster choose <address>`: 选择当前操作的合约上下文。
+*   `fsca cluster link <type> <addr> <id>`: 链接模块 (type: `positive` | `passive`)。
+*   `fsca cluster unlink <type> <addr> <id>`: 解除链接。
+*   `fsca cluster mount <id> <name>`: 挂载合约到集群。
+*   `fsca cluster unmount <id>`: 从集群卸载合约。
+
+## 目录结构
 
 ```
-fsca-cli/
-├── cli/
-│   ├── index.js          # 主入口
-│   ├── parser.js         # 命令解析器
-│   ├── executor.js       # 命令执行器
-│   ├── commands.json     # 命令配置
-│   └── utils.js          # 工具函数
-├── libs/                 # 命令处理器目录
-│   ├── init.js
-│   ├── version.js
-│   └── ...
-├── chain/                # 链相关模块
-├── wallet/               # 钱包相关模块
-└── package.json
+my-fsca-project/
+├── contracts/
+│   ├── deployed/         # 已部署合约源码备份
+│   └── undeployed/       # 核心模板代码 (fsca-core)
+├── project.json          # 项目核心配置与缓存
+├── hardhat.config.js     # Hardhat 配置
+└── ...
 ```
 
-## 开发
+## 贡献
 
-框架已经搭建完成，你可以：
-
-1. 在 `cli/commands.json` 中添加命令定义
-2. 在 `libs/` 目录下创建对应的处理器
-3. 使用 `npm link` 进行本地测试
-
-## 示例命令
-
-框架中已经包含了一些示例命令：
-
-- `fsca init` - 初始化项目
-- `fsca version` - 显示版本
-- `fsca contract deploy` - 部署合约（需要实现处理器）
-- `fsca chain info` - 显示链信息（需要实现处理器）
-- `fsca wallet create` - 创建钱包（需要实现处理器）
-
-你可以参考这些示例来添加自己的命令。
+欢迎提交 Issue 和 PR 改进 FSCA 架构。
