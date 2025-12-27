@@ -1,8 +1,7 @@
 /**
- * 链接合约 (Link)
- * 根据 wetherMounted 状态自动选择调用接口
- * Before Mount (0): addActivePodBeforeMount / addPassivePodBeforeMount
- * After Mount (1): addActivePodAfterMount / addPassivePodAfterMount
+ * 解除链接 (Unlink)
+ * 仅用于已挂载合约 (wetherMounted == 1)
+ * 调用: removeActivePodAfterMount / removePassivePodAfterMount
  */
 
 const fs = require('fs');
@@ -49,7 +48,7 @@ function loadNormalTemplateABI(rootDir) {
     ];
 }
 
-module.exports = async function link({ rootDir, args = {} }) {
+module.exports = async function unlink({ rootDir, args = {} }) {
     try {
         const { type, targetAddress, targetId } = args;
 
@@ -79,12 +78,15 @@ module.exports = async function link({ rootDir, args = {} }) {
         try {
             isMounted = await sourceContract.wetherMounted();
         } catch (e) {
-            console.warn(`Warning: Could not check wetherMounted. Assuming 0 (Before Mount). Error: ${e.message}`);
+            console.warn(`Warning: Could not check wetherMounted. Assuming 0. ${e.message}`);
         }
 
-        console.log(`Linking ${type} pod...`);
+        if (isMounted == 0) {
+            throw new Error("Cannot unlink via ClusterManager if contract is NOT mounted. Use direct contract calls or wait until mounted.");
+        }
+
+        console.log(`Unlinking ${type} pod...`);
         console.log(`  Source: ${currentOperating}`);
-        console.log(`  State: ${isMounted == 1 ? 'MOUNTED' : 'UNMOUNTED'}`);
         console.log(`  Target: ${targetAddress} (ID: ${tId})`);
 
         const clusterAddr = config.fsca.clusterAddress;
@@ -92,20 +94,10 @@ module.exports = async function link({ rootDir, args = {} }) {
         const clusterContract = new ethers.Contract(clusterAddr, clusterAbi, signer);
 
         let tx;
-        if (isMounted == 0) {
-            // Before Mount
-            if (type === 'positive') {
-                tx = await clusterContract.addActivePodBeforeMount(currentOperating, targetAddress, tId);
-            } else {
-                tx = await clusterContract.addPassivePodBeforeMount(currentOperating, targetAddress, tId);
-            }
+        if (type === 'positive') {
+            tx = await clusterContract.removeActivePodAfterMount(currentOperating, targetAddress, tId);
         } else {
-            // After Mount
-            if (type === 'positive') {
-                tx = await clusterContract.addActivePodAfterMount(currentOperating, targetAddress, tId);
-            } else {
-                tx = await clusterContract.addPassivePodAfterMount(currentOperating, targetAddress, tId);
-            }
+            tx = await clusterContract.removePassivePodAfterMount(currentOperating, targetAddress, tId);
         }
 
         console.log(`Transaction sent: ${tx.hash}`);
@@ -130,7 +122,6 @@ module.exports = async function link({ rootDir, args = {} }) {
                         if (parsed && parsed.name === 'ModuleChanged') {
                             console.log(`  Event: ModuleChanged`);
                             console.log(`    Action: ${parsed.args[3]}`);
-                            console.log(`    Module: ${parsed.args[2]}`);
                         }
                     } catch (e) { }
                 }
@@ -138,7 +129,7 @@ module.exports = async function link({ rootDir, args = {} }) {
         } catch (e) { }
 
     } catch (error) {
-        console.error('Failed to link:', error.message);
+        console.error('Failed to unlink:', error.message);
         process.exit(1);
     }
 };

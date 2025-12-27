@@ -113,6 +113,57 @@
               "description": "目标合约ID"
             }
           }
+        },
+        "unlink": {
+          "description": "解除合约链接 (需要合约已挂载)",
+          "handler": "./libs/commands/cluster/unlink",
+          "usage": "fsca cluster unlink <type> <targetAddress> <targetId>",
+          "params": {
+            "type": {
+              "type": "string",
+              "required": true,
+              "description": "链接类型: positive 或 passive"
+            },
+            "targetAddress": {
+              "type": "string",
+              "required": true,
+              "description": "目标合约地址"
+            },
+            "targetId": {
+              "type": "number",
+              "required": true,
+              "description": "目标合约ID"
+            }
+          }
+        },
+        "mount": {
+          "description": "将当前合约挂载到集群",
+          "handler": "./libs/commands/cluster/mount",
+          "usage": "fsca cluster mount <id> <name>",
+          "params": {
+            "id": {
+              "type": "number",
+              "required": true,
+              "description": "合约ID (唯一标识)"
+            },
+            "name": {
+              "type": "string",
+              "required": true,
+              "description": "合约名称"
+            }
+          }
+        },
+        "unmount": {
+          "description": "从集群卸载合约",
+          "handler": "./libs/commands/cluster/unmount",
+          "usage": "fsca cluster unmount <id>",
+          "params": {
+            "id": {
+              "type": "number",
+              "required": true,
+              "description": "要卸载的合约ID"
+            }
+          }
         }
       }
     }
