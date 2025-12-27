@@ -1,6 +1,18 @@
 {
   "description": "FSCA CLI - 链上智能合约集群开发工具",
   "commands": {
+    "deploy": {
+      "description": "继承自部署标准合约模板 (NormalTemplate)",
+      "handler": "./libs/commands/deploy",
+      "usage": "fsca deploy <description>",
+      "params": {
+        "description": {
+          "type": "string",
+          "required": true,
+          "description": "合约描述/名称"
+        }
+      }
+    },
     "init": {
       "description": "初始化 FSCA 项目",
       "handler": "./libs/commands/init/init",
@@ -52,9 +64,57 @@
               "description": "多签钱包所需确认数（默认：1）"
             }
           }
+        },
+        "list": {
+          "description": "列举全局合约集群",
+          "commands": {
+            "mounted": {
+              "description": "列举已挂载的合约",
+              "handler": "./libs/commands/cluster/list",
+              "usage": "fsca cluster list mounted"
+            },
+            "all": {
+              "description": "列举所有合约（包括已删除的）",
+              "handler": "./libs/commands/cluster/list",
+              "usage": "fsca cluster list all"
+            }
+          }
+        },
+        "choose": {
+          "description": "选择当前操作的合约",
+          "handler": "./libs/commands/cluster/choose",
+          "usage": "fsca cluster choose <address>",
+          "params": {
+            "address": {
+              "type": "string",
+              "required": true,
+              "description": "合约地址"
+            }
+          }
+        },
+        "link": {
+          "description": "链接合约(仅未挂载时可用)",
+          "handler": "./libs/commands/cluster/link",
+          "usage": "fsca cluster link <type> <targetAddress> <targetId>",
+          "params": {
+            "type": {
+              "type": "string",
+              "required": true,
+              "description": "链接类型: positive 或 passive"
+            },
+            "targetAddress": {
+              "type": "string",
+              "required": true,
+              "description": "目标合约地址"
+            },
+            "targetId": {
+              "type": "number",
+              "required": true,
+              "description": "目标合约ID"
+            }
+          }
         }
       }
     }
-
   }
 }
