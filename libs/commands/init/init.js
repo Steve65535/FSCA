@@ -62,6 +62,13 @@ async function installHardhat(rootDir) {
 async function initHardhat(rootDir) {
   console.log('Initializing hardhat project...');
 
+  // Set package.json type to module to support modern hardhat setups
+  try {
+    execSync('npm pkg set type="module"', { cwd: rootDir, stdio: 'ignore' });
+  } catch (e) {
+    // Ignore error if it fails (e.g. no package.json yet?)
+  }
+
   // 检查是否已经初始化过 hardhat
   const hardhatConfigPath = path.join(rootDir, 'hardhat.config.js');
   const hardhatConfigTsPath = path.join(rootDir, 'hardhat.config.ts');
@@ -97,11 +104,11 @@ function createBasicHardhatConfig(rootDir) {
     }
   });
 
-  // 创建基本的 hardhat.config.js
-  const hardhatConfig = `require("@nomicfoundation/hardhat-toolbox");
+  // 创建基本的 hardhat.config.js (ESM Format)
+  const hardhatConfig = `import "@nomicfoundation/hardhat-toolbox";
 
 /** @type import('hardhat/config').HardhatUserConfig */
-module.exports = {
+export default {
   solidity: "0.8.19",
   networks: {
     localnet: {
@@ -113,7 +120,7 @@ module.exports = {
 `;
 
   fs.writeFileSync(hardhatConfigPath, hardhatConfig, 'utf-8');
-  console.log('Created basic hardhat.config.js');
+  console.log('Created basic hardhat.config.js (ESM)');
 }
 /**
  * 递归复制目录

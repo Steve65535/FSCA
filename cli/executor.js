@@ -6,6 +6,8 @@
 const path = require('path');
 const fs = require('fs');
 
+const logger = require('../libs/logger');
+
 class CommandExecutor {
   constructor(handlersDir = path.join(__dirname, '../libs')) {
     this.handlersDir = handlersDir;
@@ -30,31 +32,53 @@ class CommandExecutor {
       return;
     }
 
+    // Log Command
+    if (parsedCommand.command) {
+      logger.logCommand(parsedCommand.command);
+    }
+
+    // Log Input (Arguments)
+    if (parsedCommand.args && Object.keys(parsedCommand.args).length > 0) {
+      const inputStr = Object.entries(parsedCommand.args)
+        .map(([k, v]) => `--${k}=${v}`)
+        .join(' ');
+      logger.logInput(inputStr);
+    }
+
     try {
       // 加载处理器
       const handler = await this.loadHandler(parsedCommand.handler);
-      
+
+      let result;
       // 执行处理器
       if (typeof handler === 'function') {
-        const result = await handler({
+        result = await handler({
           args: parsedCommand.args,
           subcommands: parsedCommand.subcommands,
           config: parsedCommand.config,
           rootDir
         });
-        return result;
       } else if (handler && typeof handler.default === 'function') {
-        const result = await handler.default({
+        result = await handler.default({
           args: parsedCommand.args,
           subcommands: parsedCommand.subcommands,
           config: parsedCommand.config,
           rootDir
         });
-        return result;
       } else {
         console.error(`Handler "${parsedCommand.handler}" is not a function`);
         return;
       }
+
+      // Log Result
+      if (result !== undefined && result !== null) {
+        // Only log if it's a string or simple object, avoid logging massive objects if not intended
+        const resultStr = typeof result === 'object' ? JSON.stringify(result, null, 2) : String(result);
+        logger.logResult(resultStr);
+      }
+
+      return result;
+
     } catch (error) {
       console.error(`Error executing command: ${error.message}`);
       if (process.env.DEBUG) {
@@ -78,7 +102,7 @@ class CommandExecutor {
     try {
       // 支持相对路径和绝对路径
       let modulePath;
-      
+
       if (path.isAbsolute(handlerPath)) {
         modulePath = handlerPath;
       } else if (handlerPath.startsWith('./libs/')) {
