@@ -7,6 +7,21 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 const readline = require('readline');
+const logger = require('../../logger');
+
+const ASCII_TITLE = `
+  ███████╗███████╗ ██████╗ █████╗       ██████╗██╗     ██╗
+  ██╔════╝██╔════╝██╔════╝██╔══██╗     ██╔════╝██║     ██║
+  █████╗  ███████╗██║     ███████║     ██║     ██║     ██║
+  ██╔══╝  ╚════██║██║     ██╔══██║     ██║     ██║     ██║
+  ██║     ███████║╚██████╗██║  ██║     ╚██████╗███████╗██║
+  ╚═╝     ╚══════╝ ╚═════╝╚═╝  ╚═╝      ╚═════╝╚══════╝╚═╝
+`;
+
+function printInitTitle() {
+  console.log(`${logger.COLORS.brightPurple}${ASCII_TITLE}${logger.COLORS.reset}`);
+  console.log(`${logger.COLORS.brightPurple}  Financial Smart Contract Architecture CLI${logger.COLORS.reset}\n`);
+}
 
 /**
  * 检查 hardhat 是否已安装
@@ -398,6 +413,7 @@ function createProjectConfig(rootDir, config) {
  * @param {Object} params.args - 命令行参数
  */
 module.exports = async function init({ rootDir, args = {} }) {
+  printInitTitle();
   console.log('Initializing FSCA project...');
   console.log('');
 
