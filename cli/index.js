@@ -23,10 +23,10 @@ const executor = new CommandExecutor();
 const args = process.argv.slice(2);
 
 // 处理帮助命令
-if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
-  // logger.printTitle(require('../package.json').version);
-  console.log(parser.getHelp());
-  console.log('\nUse "fsca <command> --help" for more information about a command.');
+if (args.length === 0 || args[0] === '--help' || args[0] === '-h' || args[0] === 'help') {
+  // 使用增强的帮助命令
+  const helpCommand = require('../libs/commands/help');
+  helpCommand({ rootDir: process.cwd(), args: {} });
   process.exit(0);
 }
 

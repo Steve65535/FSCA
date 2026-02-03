@@ -1,6 +1,11 @@
 {
   "description": "FSCA CLI - 链上智能合约集群开发工具",
   "commands": {
+    "help": {
+      "description": "显示帮助信息",
+      "handler": "./libs/commands/help",
+      "usage": "fsca help"
+    },
     "deploy": {
       "description": "继承自部署标准合约模板 (NormalTemplate)",
       "handler": "./libs/commands/deploy",
