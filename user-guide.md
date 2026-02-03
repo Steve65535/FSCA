@@ -496,6 +496,163 @@ fsca normal get modules passive
 
 ---
 
+### MultiSig 钱包管理
+
+#### `fsca wallet submit`
+
+提交新交易到多签钱包。
+
+```bash
+fsca wallet submit --to <address> --value <amount> --data <hex>
+```
+
+**参数**:
+- `--to`: 目标合约地址
+- `--value`: 发送的 ETH 数量 (可选,默认 0)
+- `--data`: 调用数据 (ABI 编码的 hex)
+
+**示例**:
+```bash
+# 提交注册合约的交易
+fsca wallet submit \
+  --to 0xClusterManager... \
+  --value 0 \
+  --data 0xabcdef12...
+```
+
+---
+
+#### `fsca wallet confirm`
+
+确认待处理的交易。
+
+```bash
+fsca wallet confirm <txIndex>
+```
+
+**示例**:
+```bash
+fsca wallet confirm 0
+```
+
+---
+
+#### `fsca wallet execute`
+
+执行已达到阈值的交易。
+
+```bash
+fsca wallet execute <txIndex>
+```
+
+**示例**:
+```bash
+fsca wallet execute 0
+```
+
+---
+
+#### `fsca wallet revoke`
+
+撤销之前的确认。
+
+```bash
+fsca wallet revoke <txIndex>
+```
+
+**示例**:
+```bash
+fsca wallet revoke 0
+```
+
+---
+
+#### `fsca wallet list`
+
+列出所有或待处理的交易。
+
+```bash
+# 列出所有交易
+fsca wallet list
+
+# 仅列出待处理交易
+fsca wallet list --pending
+```
+
+**输出示例**:
+```
+┌─────┬──────────────────────┬───────────┬──────────┬─────────────┐
+│ ID  │ To                   │ Value     │ Status   │ Confirms    │
+├─────┼──────────────────────┼───────────┼──────────┼─────────────┤
+│ 0   │ 0xCluster...         │ 0         │ Pending  │ 1/2         │
+│ 1   │ 0xMultiSig...        │ 0         │ Ready    │ 2/2         │
+└─────┴──────────────────────┴───────────┴──────────┴─────────────┘
+```
+
+---
+
+#### `fsca wallet info`
+
+查看交易详情。
+
+```bash
+fsca wallet info <txIndex>
+```
+
+**输出示例**:
+```
+╔═══════════════════════════════════════════════════════════════╗
+║  Transaction #0                                              ║
+╠═══════════════════════════════════════════════════════════════╣
+║  To:        0x1234567890abcdef...
+║  Value:     0 ETH
+║  Status:    PENDING
+║  Confirms:  1/2
+╠═══════════════════════════════════════════════════════════════╣
+║  Confirmations:
+║    ✓ 0xOwner1...
+║    ○ 0xOwner2...
+╚═══════════════════════════════════════════════════════════════╝
+```
+
+---
+
+#### `fsca wallet owners`
+
+查看所有所有者和阈值。
+
+```bash
+fsca wallet owners
+```
+
+---
+
+#### `fsca wallet propose`
+
+提议治理变更。
+
+```bash
+# 提议添加新所有者
+fsca wallet propose add-owner <address>
+
+# 提议移除所有者
+fsca wallet propose remove-owner <address>
+
+# 提议修改确认阈值
+fsca wallet propose change-threshold <threshold>
+```
+
+**示例**:
+```bash
+# 添加新所有者
+fsca wallet propose add-owner 0xNewOwner...
+
+# 修改阈值为 3
+fsca wallet propose change-threshold 3
+```
+
+---
+
 ## 完整工作流
 
 ### 场景 1: 构建简单的借贷系统
@@ -864,6 +1021,11 @@ fsca cluster operator add <your-address>
 | `fsca cluster operator list` | 列出操作员 | `fsca cluster operator list` |
 | `fsca cluster operator add <addr>` | 添加操作员 | `fsca cluster operator add 0x...` |
 | `fsca cluster operator remove <addr>` | 移除操作员 | `fsca cluster operator remove 0x...` |
+| `fsca wallet submit --to <addr> --data <hex>` | 提交多签交易 | `fsca wallet submit --to 0x... --data 0x...` |
+| `fsca wallet confirm <txIndex>` | 确认交易 | `fsca wallet confirm 0` |
+| `fsca wallet execute <txIndex>` | 执行交易 | `fsca wallet execute 0` |
+| `fsca wallet list` | 列出交易 | `fsca wallet list --pending` |
+| `fsca wallet owners` | 查看所有者 | `fsca wallet owners` |
 | `fsca normal right set <abi> <lvl>` | 设置权限 | `fsca normal right set 0x... 2` |
 | `fsca normal right remove <abi>` | 移除权限 | `fsca normal right remove 0x...` |
 | `fsca normal get modules <type>` | 查询模块 | `fsca normal get modules active` |
