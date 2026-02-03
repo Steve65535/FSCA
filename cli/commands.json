@@ -97,6 +97,11 @@
             }
           }
         },
+        "current": {
+          "description": "显示当前操作的合约信息",
+          "handler": "./libs/commands/cluster/current",
+          "usage": "fsca cluster current"
+        },
         "operator": {
           "description": "管理集群管理员 (Operator)",
           "commands": {

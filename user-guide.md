@@ -306,6 +306,40 @@ fsca cluster choose 0x123...
 
 ---
 
+#### `fsca cluster current`
+
+显示当前正在操作的合约信息。
+
+```bash
+fsca cluster current
+```
+
+**功能**:
+- 快速查看当前选择的合约
+- 显示地址、名称、ID、状态、部署时间等
+- 仅读取本地缓存,速度极快
+
+**输出示例**:
+```
+╔═══════════════════════════════════════════════════════════════╗
+║  Current Operating Contract                              ║
+╠═══════════════════════════════════════════════════════════════╣
+║  Address:  0x1234567890abcdef1234567890abcdef12345678
+║  Name:     LendingPod
+║  ID:       1
+║  Status:   ✓ MOUNTED
+║  Deployed: 2/3/2026, 1:00:00 PM
+║  Tx:       0xabcdef12...34567890
+╚═══════════════════════════════════════════════════════════════╝
+```
+
+**使用场景**:
+- 部署后检查: `fsca deploy "MyPod"` → `fsca cluster current`
+- 切换后确认: `fsca cluster choose 0x...` → `fsca cluster current`
+- 操作前验证: 在执行重要操作前先确认当前合约
+
+---
+
 #### `fsca cluster link <type> <targetAddress> <targetId>`
 
 在合约间建立链接关系。
@@ -821,6 +855,7 @@ fsca cluster operator add <your-address>
 | `fsca cluster mount <id> <name>` | 挂载合约 | `fsca cluster mount 1 "MyPod"` |
 | `fsca cluster unmount <id>` | 卸载合约 | `fsca cluster unmount 1` |
 | `fsca cluster choose <addr>` | 选择合约 | `fsca cluster choose 0x...` |
+| `fsca cluster current` | 显示当前合约 | `fsca cluster current` |
 | `fsca cluster link <type> <addr> <id>` | 建立链接 | `fsca cluster link positive 0x... 2` |
 | `fsca cluster unlink <type> <addr> <id>` | 解除链接 | `fsca cluster unlink positive 0x... 2` |
 | `fsca cluster list <scope>` | 列举合约 | `fsca cluster list mounted` |

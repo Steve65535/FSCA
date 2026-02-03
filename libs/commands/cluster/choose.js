@@ -3,11 +3,13 @@
  * 1. 更新 project.json 中的 currentOperating 字段
  * 2. 检查合约是否在集群中注册
  * 3. 检查合约的 wetherMounted 状态
+ * 4. 显示彩色的合约信息
  */
 
 const fs = require('fs');
 const path = require('path');
 const { ethers } = require('ethers');
+const logger = require('../../logger');
 
 // 加载 chain 目录下的封装函数
 const chainProvider = require('../../../chain/provider');
@@ -148,12 +150,96 @@ async function checkInCluster(clusterContract, targetAddr) {
     return { found: false };
 }
 
+/**
+ * 从缓存中查找合约元数据
+ */
+function findContractMetadata(config, address) {
+    const addr = address.toLowerCase();
+
+    // 先在 runningcontracts 中查找
+    if (config.fsca?.runningcontracts) {
+        const found = config.fsca.runningcontracts.find(
+            c => c.address.toLowerCase() === addr
+        );
+        if (found) return { ...found, status: 'MOUNTED' };
+    }
+
+    // 再在 unmountedcontracts 中查找
+    if (config.fsca?.unmountedcontracts) {
+        const found = config.fsca.unmountedcontracts.find(
+            c => c.address.toLowerCase() === addr
+        );
+        if (found) return { ...found, status: 'UNMOUNTED' };
+    }
+
+    // 最后在 alldeployedcontracts 中查找
+    if (config.fsca?.alldeployedcontracts) {
+        const found = config.fsca.alldeployedcontracts.find(
+            c => c.address.toLowerCase() === addr
+        );
+        if (found) return { ...found, status: 'UNKNOWN' };
+    }
+
+    return null;
+}
+
+/**
+ * 显示彩色的合约信息卡片
+ */
+function displayContractInfo(address, metadata, clusterStatus, mountStatus) {
+    const { COLORS } = logger;
+
+    console.log('');
+    console.log(`${COLORS.brightPurple}╔═══════════════════════════════════════════════════════════════╗${COLORS.reset}`);
+    console.log(`${COLORS.brightPurple}║${COLORS.reset}  ${COLORS.bold}${COLORS.brightBlue}Current Operating Contract${COLORS.reset}                              ${COLORS.brightPurple}║${COLORS.reset}`);
+    console.log(`${COLORS.brightPurple}╠═══════════════════════════════════════════════════════════════╣${COLORS.reset}`);
+
+    // 地址
+    console.log(`${COLORS.brightPurple}║${COLORS.reset}  ${COLORS.brightYellow}Address:${COLORS.reset}  ${COLORS.brightGreen}${address}${COLORS.reset}`);
+
+    // 名称
+    if (metadata?.name || clusterStatus?.name) {
+        const name = metadata?.name || clusterStatus?.name;
+        console.log(`${COLORS.brightPurple}║${COLORS.reset}  ${COLORS.brightYellow}Name:${COLORS.reset}     ${COLORS.brightBlue}${name}${COLORS.reset}`);
+    }
+
+    // ID
+    if (clusterStatus?.found) {
+        console.log(`${COLORS.brightPurple}║${COLORS.reset}  ${COLORS.brightYellow}ID:${COLORS.reset}       ${COLORS.brightGreen}${clusterStatus.id}${COLORS.reset}`);
+    } else if (metadata?.contractId) {
+        console.log(`${COLORS.brightPurple}║${COLORS.reset}  ${COLORS.brightYellow}ID:${COLORS.reset}       ${COLORS.brightGreen}${metadata.contractId}${COLORS.reset}`);
+    }
+
+    // 状态
+    const statusColor = mountStatus == 1 ? COLORS.brightGreen : COLORS.brightYellow;
+    const statusText = mountStatus == 1 ? '✓ MOUNTED' : '○ NOT MOUNTED';
+    console.log(`${COLORS.brightPurple}║${COLORS.reset}  ${COLORS.brightYellow}Status:${COLORS.reset}   ${statusColor}${statusText}${COLORS.reset}`);
+
+    // 部署时间
+    if (metadata?.timeStamp) {
+        const date = new Date(metadata.timeStamp * 1000).toLocaleString();
+        console.log(`${COLORS.brightPurple}║${COLORS.reset}  ${COLORS.brightYellow}Deployed:${COLORS.reset} ${date}`);
+    }
+
+    // 部署交易
+    if (metadata?.deployTx) {
+        const shortTx = metadata.deployTx.slice(0, 10) + '...' + metadata.deployTx.slice(-8);
+        console.log(`${COLORS.brightPurple}║${COLORS.reset}  ${COLORS.brightYellow}Tx:${COLORS.reset}       ${shortTx}`);
+    }
+
+    console.log(`${COLORS.brightPurple}╚═══════════════════════════════════════════════════════════════╝${COLORS.reset}`);
+    console.log('');
+}
+
 module.exports = async function choose({ rootDir, args = {} }) {
     try {
         const targetAddr = args.address;
         if (!ethers.isAddress(targetAddr)) {
             throw new Error(`Invalid address: ${targetAddr}`);
         }
+
+        console.log(`${logger.COLORS.brightBlue}Selecting contract: ${targetAddr}${logger.COLORS.reset}`);
+        console.log('');
 
         // 1. Update config
         updateCurrentOperating(rootDir, targetAddr);
@@ -162,42 +248,65 @@ module.exports = async function choose({ rootDir, args = {} }) {
         const config = loadProjectConfig(rootDir);
         const provider = getProvider(config.network.rpc);
 
-        // 3. Connect to ClusterManager
+        // 3. Find metadata from cache
+        const metadata = findContractMetadata(config, targetAddr);
+
+        // 4. Connect to ClusterManager
         const clusterAbi = loadClusterManagerABI(rootDir);
         const clusterContract = new ethers.Contract(config.fsca.clusterAddress, clusterAbi, provider);
 
-        // 4. Check if in cluster
+        // 5. Check if in cluster
+        console.log(`${logger.COLORS.brightYellow}Querying cluster status...${logger.COLORS.reset}`);
         const clusterStatus = await checkInCluster(clusterContract, targetAddr);
 
-        if (clusterStatus.found) {
-            console.log(`✓ Contract found in cluster.`);
-            console.log(`  Name: ${clusterStatus.name}`);
-            console.log(`  ID: ${clusterStatus.id}`);
-        } else {
-            console.log(`! Contract NOT found in active contractRegistrations.`);
-            console.log(`  (It might be deleted or not registered yet)`);
-        }
-
-        // 5. Check wetherMounted
-        console.log(`Checking wetherMounted status on ${targetAddr}...`);
+        // 6. Check wetherMounted
+        console.log(`${logger.COLORS.brightYellow}Checking mount status...${logger.COLORS.reset}`);
         const templateAbi = loadNormalTemplateABI(rootDir);
         const targetContract = new ethers.Contract(targetAddr, templateAbi, provider);
 
+        let mountStatus = null;
         try {
-            const isMounted = await targetContract.wetherMounted();
-            console.log(`  wetherMounted: ${isMounted} (${isMounted == 1 ? 'MOUNTED' : 'NOT MOUNTED'})`);
-
-            if (isMounted == 0) {
-                console.log("");
-                console.log("Tip: Contract is not mounted. You can use 'fsca cluster link' to link it.");
-            }
+            mountStatus = await targetContract.wetherMounted();
         } catch (e) {
-            console.log(`  ! Failed to read wetherMounted. Is this a compatible contract?`);
-            console.log(`  Error: ${e.message}`);
+            console.warn(`${logger.COLORS.brightYellow}⚠ Could not read wetherMounted status${logger.COLORS.reset}`);
         }
 
+        // 7. Display beautiful contract info
+        displayContractInfo(targetAddr, metadata, clusterStatus, mountStatus);
+
+        // 8. Additional tips
+        if (!clusterStatus.found) {
+            console.log(`${logger.COLORS.brightYellow}💡 Tip: Contract not found in cluster. Use 'fsca cluster mount' to register it.${logger.COLORS.reset}`);
+        } else if (mountStatus == 0) {
+            console.log(`${logger.COLORS.brightYellow}💡 Tip: Contract is not mounted. You can use 'fsca cluster link' to configure links.${logger.COLORS.reset}`);
+        } else if (mountStatus == 1) {
+            console.log(`${logger.COLORS.brightGreen}✓ Contract is active and ready for operations.${logger.COLORS.reset}`);
+        }
+        console.log('');
+
     } catch (error) {
-        console.error('Failed to choose contract:', error.message);
+        console.error(`${logger.COLORS.brightYellow}✗ Failed to choose contract:${logger.COLORS.reset}`, error.message);
         process.exit(1);
     }
+};
+
+/**
+ * 导出辅助函数供其他命令使用
+ */
+module.exports.displayCurrentContract = function (config) {
+    const currentAddr = config.fsca?.currentOperating;
+    if (!currentAddr) {
+        return;
+    }
+
+    const metadata = findContractMetadata(config, currentAddr);
+    const { COLORS } = logger;
+
+    console.log(`${COLORS.brightPurple}┌─ Current Contract ─────────────────────────────────────────┐${COLORS.reset}`);
+    console.log(`${COLORS.brightPurple}│${COLORS.reset} ${COLORS.brightGreen}${currentAddr}${COLORS.reset}`);
+    if (metadata?.name) {
+        console.log(`${COLORS.brightPurple}│${COLORS.reset} ${COLORS.brightBlue}${metadata.name}${COLORS.reset} ${metadata.contractId ? `(ID: ${metadata.contractId})` : ''}`);
+    }
+    console.log(`${COLORS.brightPurple}└────────────────────────────────────────────────────────────┘${COLORS.reset}`);
+    console.log('');
 };
