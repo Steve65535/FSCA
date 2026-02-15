@@ -140,9 +140,16 @@ Month 10-12: 企业版功能 + SaaS 平台
 - 基础文档
 - 社区支持
 
+### Pro 版功能 (Complex Kernel)
+- [ ] **Local AST Analysis Engine**: 本地源码静态分析, 识别隐藏依赖
+- [ ] **Dynamic Hook Injection**: 编译前代码插桩, 注入安全哨兵
+- [ ] **Logic Loop Detection**: 拓扑回路检测, 防止递归归还交易
+- [ ] **Permission Diff**: 变更前后的权限差分审计报告
+
 ### 企业版 ($5,000/年)
-- 所有免费版功能
-- Web Dashboard
+- 所有基础版功能
+- **Advanced Hook Engine**: 企业级安全插桩
+- Web Dashboard (可视化管理)
 - 监控和告警
 - 优先技术支持
 - 安全审计报告
