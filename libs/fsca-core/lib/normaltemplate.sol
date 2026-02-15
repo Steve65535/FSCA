@@ -22,7 +22,7 @@ contract normalTemplate {
 
     /// @notice ClusterManager 地址（不可变）
     address public immutable clusterAddress;
-    uint8 public wetherMounted =0;
+    uint8 public whetherMounted =0;
     string public name;
     uint32 public contractId;
     modifier onlyCluster{
@@ -66,11 +66,11 @@ contract normalTemplate {
         clusterAddress = _clusterAddress;
         name= _name;
     }
-    function setWetherMounted(uint8 _wethermounted) external onlyCluster{
-        wetherMounted=_wethermounted;
+    function setWhetherMounted(uint8 _whetherMounted) external onlyCluster{
+        whetherMounted=_whetherMounted;
     }
     modifier notMounted{
-        require(wetherMounted==0,"Module amready mounted");
+        require(whetherMounted==0,"Module already mounted");
         _;
     }
     /* -------------------------------------------------------------------------- */

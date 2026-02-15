@@ -124,14 +124,14 @@ contract EvokerManager is normalTemplate, NoReentryGuard {
                 _addEdge(targetAddr, newContract);
             }
         }
-        nc.setWetherMounted(1);
+        nc.setWhetherMounted(1);
     }
     //pod=1 挂载soueceaddr的主动 反之则反
     function mountSingle(address sourceAddr,address targetAddr,uint8 pod) external onlyCluster{
         normalTemplate source=normalTemplate(sourceAddr);
         normalTemplate target=normalTemplate(targetAddr);
-        source.setWetherMounted(0);
-        target.setWetherMounted(0);//unlock
+        source.setWhetherMounted(0);
+        target.setWhetherMounted(0);//unlock
         if(pod==1){
             source.addActiveModule(target.contractId(),targetAddr);
             target.addPassiveModule(source.contractId(), sourceAddr);
@@ -143,15 +143,15 @@ contract EvokerManager is normalTemplate, NoReentryGuard {
         _addEdge(sourceAddr, targetAddr);
         _registerNode(sourceAddr);
         _registerNode(targetAddr);
-        source.setWetherMounted(1);
-        target.setWetherMounted(1);
+        source.setWhetherMounted(1);
+        target.setWhetherMounted(1);
     }
     function unmountSingle(address sourceAddr, address targetAddr, uint8 pod) external onlyCluster {
         normalTemplate source = normalTemplate(sourceAddr);
         normalTemplate target = normalTemplate(targetAddr);
 
-        source.setWetherMounted(0);
-        target.setWetherMounted(0);
+        source.setWhetherMounted(0);
+        target.setWhetherMounted(0);
 
         if (pod == 1) {
             source.removeActiveModule(target.contractId());
@@ -162,8 +162,8 @@ contract EvokerManager is normalTemplate, NoReentryGuard {
             target.removeActiveModule(source.contractId());
         }
 
-        source.setWetherMounted(1);
-        target.setWetherMounted(1);
+        source.setWhetherMounted(1);
+        target.setWhetherMounted(1);
 
         _removeEdge(sourceAddr, targetAddr);
     }
@@ -177,7 +177,7 @@ contract EvokerManager is normalTemplate, NoReentryGuard {
     {
         
         normalTemplate target = normalTemplate(targetAddr);
-        target.setWetherMounted(0);
+        target.setWhetherMounted(0);
         // 遍历所有节点，检查是否存在边
         address[] memory active=target.getAllActiveAddresses();
         address[] memory passive=target.getAllPassiveAddresses();

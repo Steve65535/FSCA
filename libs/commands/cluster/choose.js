@@ -2,7 +2,7 @@
  * 选择当前操作的合约
  * 1. 更新 project.json 中的 currentOperating 字段
  * 2. 检查合约是否在集群中注册
- * 3. 检查合约的 wetherMounted 状态
+ * 3. 检查合约的 whetherMounted 状态
  * 4. 显示彩色的合约信息
  */
 
@@ -79,7 +79,7 @@ function loadClusterManagerABI(rootDir) {
 }
 
 /**
- * 加载 NormalTemplate ABI (为了检查 wetherMounted)
+ * 加载 NormalTemplate ABI (为了检查 whetherMounted)
  */
 function loadNormalTemplateABI(rootDir) {
     // 尝试查找 normalTemplate Artifact
@@ -99,7 +99,7 @@ function loadNormalTemplateABI(rootDir) {
     // 如果找不到，我们可以构造一个最小 ABI
     console.warn("Could not find normalTemplate ABI json, using minimal ABI.");
     return [
-        "function wetherMounted() view returns (uint8)"
+        "function whetherMounted() view returns (uint8)"
     ];
 }
 
@@ -259,16 +259,16 @@ module.exports = async function choose({ rootDir, args = {} }) {
         console.log(`${logger.COLORS.brightYellow}Querying cluster status...${logger.COLORS.reset}`);
         const clusterStatus = await checkInCluster(clusterContract, targetAddr);
 
-        // 6. Check wetherMounted
+        // 6. Check whetherMounted
         console.log(`${logger.COLORS.brightYellow}Checking mount status...${logger.COLORS.reset}`);
         const templateAbi = loadNormalTemplateABI(rootDir);
         const targetContract = new ethers.Contract(targetAddr, templateAbi, provider);
 
         let mountStatus = null;
         try {
-            mountStatus = await targetContract.wetherMounted();
+            mountStatus = await targetContract.whetherMounted();
         } catch (e) {
-            console.warn(`${logger.COLORS.brightYellow}⚠ Could not read wetherMounted status${logger.COLORS.reset}`);
+            console.warn(`${logger.COLORS.brightYellow}⚠ Could not read whetherMounted status${logger.COLORS.reset}`);
         }
 
         // 7. Display beautiful contract info

@@ -1,6 +1,6 @@
 /**
  * 链接合约 (Link)
- * 根据 wetherMounted 状态自动选择调用接口
+ * 根据 whetherMounted 状态自动选择调用接口
  * Before Mount (0): addActivePodBeforeMount / addPassivePodBeforeMount
  * After Mount (1): addActivePodAfterMount / addPassivePodAfterMount
  */
@@ -44,7 +44,7 @@ function loadNormalTemplateABI(rootDir) {
         if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, 'utf-8')).abi;
     }
     return [
-        "function wetherMounted() view returns (uint8)",
+        "function whetherMounted() view returns (uint8)",
         "event ModuleChanged(address indexed podAddr, uint32 contractId, address moduleAddress, string action)"
     ];
 }
@@ -71,15 +71,15 @@ module.exports = async function link({ rootDir, args = {} }) {
         const provider = getProvider(config.network.rpc);
         const signer = getSigner(provider, config.account.privateKey);
 
-        // Check wetherMounted
+        // Check whetherMounted
         const templateAbi = loadNormalTemplateABI(rootDir);
         const sourceContract = new ethers.Contract(currentOperating, templateAbi, provider);
 
         let isMounted = 0;
         try {
-            isMounted = await sourceContract.wetherMounted();
+            isMounted = await sourceContract.whetherMounted();
         } catch (e) {
-            console.warn(`Warning: Could not check wetherMounted. Assuming 0 (Before Mount). Error: ${e.message}`);
+            console.warn(`Warning: Could not check whetherMounted. Assuming 0 (Before Mount). Error: ${e.message}`);
         }
 
         console.log(`Linking ${type} pod...`);
