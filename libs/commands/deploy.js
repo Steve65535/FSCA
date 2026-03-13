@@ -82,7 +82,7 @@ module.exports = async function deploy({ rootDir, args = {} }) {
         }
 
         const provider = getProvider(config.network.rpc);
-        const signer = getSigner(provider, config.account.privateKey);
+        const signer = getSigner(config.account.privateKey, provider);
 
         // 3. Load Artifact
         const artifact = loadArtifact(rootDir, contractName);

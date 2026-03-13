@@ -84,7 +84,9 @@ module.exports = async function upgrade({ rootDir, args = {} }) {
         const clusterAddr = config.fsca.clusterAddress;
 
         const provider = getProvider(config.network.rpc);
-        const signer = getSigner(config.account.privateKey, provider);
+        const rawSigner = getSigner(config.account.privateKey, provider);
+        // NonceManager ensures sequential nonces across deploy + multiple txs
+        const signer = new ethers.NonceManager(rawSigner);
 
         const clusterRead = new ethers.Contract(clusterAddr, CLUSTER_ABI, provider);
         const clusterWrite = new ethers.Contract(clusterAddr, CLUSTER_ABI, signer);

@@ -1,0 +1,18 @@
+{
+  "name": "fsca-demo",
+  "version": "1.0.0",
+  "description": "FSCA CBS 架构演示：存储/逻辑分离 + 热升级",
+  "scripts": {
+    "compile": "npx hardhat compile",
+    "demo": "npx hardhat run scripts/demo.js",
+    "node": "npx hardhat node",
+    "deploy": "node scripts/deploy.js",
+    "upgrade": "node scripts/upgrade.js",
+    "test:size": "npx hardhat size-contracts"
+  },
+  "devDependencies": {
+    "hardhat": "^2.22.5",
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat-contract-sizer": "^2.10.0"
+  }
+}

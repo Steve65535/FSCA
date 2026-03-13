@@ -35,6 +35,7 @@ function loadClusterManagerABI(rootDir) {
         path.join(rootDir, 'artifacts', 'contracts', 'deployed', 'structure', 'ClusterManager.sol', 'ClusterManager.json'),
         path.join(rootDir, 'artifacts', 'contracts', 'undeployed', 'structure', 'clustermanager.sol', 'ClusterManager.json'),
         path.join(rootDir, 'artifacts', 'contracts', 'structure', 'clustermanager.sol', 'ClusterManager.json'),
+        path.join(rootDir, 'artifacts', 'contracts', 'core', 'structure', 'clustermanager.sol', 'ClusterManager.json'),
     ];
     for (const p of artifactPaths) {
         if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, 'utf-8')).abi;
@@ -45,7 +46,8 @@ function loadClusterManagerABI(rootDir) {
 module.exports = async function mount({ rootDir, args = {} }) {
     try {
         // 1. Inputs
-        const { id, name } = args;
+        const id   = args.id   || args.arg0;
+        const name = args.name || args.arg1;
         if (!id || !name) throw new Error("ID and Name are required.");
 
         // 2. Config
@@ -63,7 +65,7 @@ module.exports = async function mount({ rootDir, args = {} }) {
 
         // 3. Connect
         const provider = getProvider(config.network.rpc);
-        const signer = getSigner(provider, config.account.privateKey);
+        const signer = getSigner(config.account.privateKey, provider);
         const clusterAddr = config.fsca.clusterAddress;
         const abi = loadClusterManagerABI(rootDir);
         const cluster = new ethers.Contract(clusterAddr, abi, signer);

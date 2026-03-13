@@ -66,6 +66,7 @@ function loadClusterManagerABI(rootDir) {
         path.join(rootDir, 'artifacts', 'contracts', 'deployed', 'structure', 'ClusterManager.sol', 'ClusterManager.json'),
         path.join(rootDir, 'artifacts', 'contracts', 'undeployed', 'structure', 'clustermanager.sol', 'ClusterManager.json'),
         path.join(rootDir, 'artifacts', 'contracts', 'structure', 'clustermanager.sol', 'ClusterManager.json'),
+        path.join(rootDir, 'artifacts', 'contracts', 'core', 'structure', 'clustermanager.sol', 'ClusterManager.json'),
     ];
 
     for (const artifactPath of artifactPaths) {
@@ -233,7 +234,7 @@ function displayContractInfo(address, metadata, clusterStatus, mountStatus) {
 
 module.exports = async function choose({ rootDir, args = {} }) {
     try {
-        const targetAddr = args.address;
+        const targetAddr = args.address || args.arg0;
         if (!ethers.isAddress(targetAddr)) {
             throw new Error(`Invalid address: ${targetAddr}`);
         }

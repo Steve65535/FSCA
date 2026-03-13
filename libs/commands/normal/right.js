@@ -45,6 +45,7 @@ function loadClusterManagerABI(rootDir) {
         path.join(rootDir, 'artifacts', 'contracts', 'deployed', 'structure', 'ClusterManager.sol', 'ClusterManager.json'),
         path.join(rootDir, 'artifacts', 'contracts', 'undeployed', 'structure', 'clustermanager.sol', 'ClusterManager.json'),
         path.join(rootDir, 'artifacts', 'contracts', 'structure', 'clustermanager.sol', 'ClusterManager.json'),
+        path.join(rootDir, 'artifacts', 'contracts', 'core', 'structure', 'clustermanager.sol', 'ClusterManager.json'),
     ];
     for (const p of artifactPaths) {
         if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, 'utf-8')).abi;
@@ -94,7 +95,7 @@ module.exports = async function right({ rootDir, args = {}, subcommands = [], co
 
         // 3. Connect
         const provider = getProvider(config.network.rpc);
-        const signer = getSigner(provider, config.account.privateKey);
+        const signer = getSigner(config.account.privateKey, provider);
 
         // 4. Prepare Calldata for NormalTemplate
         const normalInterface = new ethers.Interface(loadNormalTemplateABI(rootDir));

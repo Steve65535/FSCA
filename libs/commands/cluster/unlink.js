@@ -27,6 +27,7 @@ function loadClusterManagerABI(rootDir) {
         path.join(rootDir, 'artifacts', 'contracts', 'deployed', 'structure', 'ClusterManager.sol', 'ClusterManager.json'),
         path.join(rootDir, 'artifacts', 'contracts', 'undeployed', 'structure', 'clustermanager.sol', 'ClusterManager.json'),
         path.join(rootDir, 'artifacts', 'contracts', 'structure', 'clustermanager.sol', 'ClusterManager.json'),
+        path.join(rootDir, 'artifacts', 'contracts', 'core', 'structure', 'clustermanager.sol', 'ClusterManager.json'),
     ];
     for (const p of artifactPaths) {
         if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, 'utf-8')).abi;
@@ -68,7 +69,7 @@ module.exports = async function unlink({ rootDir, args = {} }) {
         }
 
         const provider = getProvider(config.network.rpc);
-        const signer = getSigner(provider, config.account.privateKey);
+        const signer = getSigner(config.account.privateKey, provider);
 
         // Check whetherMounted
         const templateAbi = loadNormalTemplateABI(rootDir);

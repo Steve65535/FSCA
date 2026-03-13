@@ -28,6 +28,7 @@ function loadClusterManagerABI(rootDir) {
         path.join(rootDir, 'artifacts', 'contracts', 'deployed', 'structure', 'ClusterManager.sol', 'ClusterManager.json'),
         path.join(rootDir, 'artifacts', 'contracts', 'undeployed', 'structure', 'clustermanager.sol', 'ClusterManager.json'),
         path.join(rootDir, 'artifacts', 'contracts', 'structure', 'clustermanager.sol', 'ClusterManager.json'),
+        path.join(rootDir, 'artifacts', 'contracts', 'core', 'structure', 'clustermanager.sol', 'ClusterManager.json'),
     ];
     for (const p of artifactPaths) {
         if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, 'utf-8')).abi;
@@ -51,7 +52,9 @@ function loadNormalTemplateABI(rootDir) {
 
 module.exports = async function link({ rootDir, args = {} }) {
     try {
-        const { type, targetAddress, targetId } = args;
+        const type          = args.type          || args.arg0;
+        const targetAddress = args.targetAddress  || args.arg1;
+        const targetId      = args.targetId       || args.arg2;
 
         if (type !== 'positive' && type !== 'passive') {
             throw new Error("Type must be 'positive' or 'passive'");
@@ -69,7 +72,7 @@ module.exports = async function link({ rootDir, args = {} }) {
         }
 
         const provider = getProvider(config.network.rpc);
-        const signer = getSigner(provider, config.account.privateKey);
+        const signer = getSigner(config.account.privateKey, provider);
 
         // Check whetherMounted
         const templateAbi = loadNormalTemplateABI(rootDir);

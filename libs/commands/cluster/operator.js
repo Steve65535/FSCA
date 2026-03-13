@@ -75,7 +75,7 @@ module.exports = async function operator({ rootDir, args = {}, subcommands = [],
             }
 
         } else if (action === 'add' || action === 'remove') {
-            const signer = getSigner(provider, config.account.privateKey);
+            const signer = getSigner(config.account.privateKey, provider);
             contract = new ethers.Contract(clusterAddress, abi, signer);
 
             const targetAddr = args.address || args.arg0;

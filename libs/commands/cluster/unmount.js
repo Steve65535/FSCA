@@ -34,6 +34,7 @@ function loadClusterManagerABI(rootDir) {
         path.join(rootDir, 'artifacts', 'contracts', 'deployed', 'structure', 'ClusterManager.sol', 'ClusterManager.json'),
         path.join(rootDir, 'artifacts', 'contracts', 'undeployed', 'structure', 'clustermanager.sol', 'ClusterManager.json'),
         path.join(rootDir, 'artifacts', 'contracts', 'structure', 'clustermanager.sol', 'ClusterManager.json'),
+        path.join(rootDir, 'artifacts', 'contracts', 'core', 'structure', 'clustermanager.sol', 'ClusterManager.json'),
     ];
     for (const p of artifactPaths) {
         if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, 'utf-8')).abi;
@@ -50,7 +51,7 @@ module.exports = async function unmount({ rootDir, args = {} }) {
 
         // Connect
         const provider = getProvider(config.network.rpc);
-        const signer = getSigner(provider, config.account.privateKey);
+        const signer = getSigner(config.account.privateKey, provider);
         const clusterAddr = config.fsca.clusterAddress;
         const abi = loadClusterManagerABI(rootDir);
         const cluster = new ethers.Contract(clusterAddr, abi, signer);
