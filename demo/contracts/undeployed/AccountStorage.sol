@@ -9,30 +9,32 @@ import "../core/lib/normaltemplate.sol";
 // 设计原则：
 //   1. 只使用双重 mapping 存储用户数据
 //   2. 只暴露 get / set 两类接口，不含任何业务逻辑
-//   3. 写入函数通过 onlyPassiveMember 限制只有 passivePod 中的授权逻辑合约才可调用
+//   3. 写入函数通过 passiveModuleVerification 限制只有授权逻辑合约才可调用
 //   4. 存储合约本身永远不需要热升级 —— 数据结构不变，只升级逻辑层
 //
 // 依赖关系（passivePod）：
 //   AccountStorage.passivePod[2] = TradeEngine（当前版本地址）
 //   热升级 TradeEngine 后，passivePod[2] 自动更新为新地址，存储无感知
-//   新增写入方（如 LendingEngine）只需 fsca cluster link 添加 passivePod，无需修改本合约
 // =============================================================================
 
 contract AccountStorage is normalTemplate {
 
     // =========================================================================
-    // 授权写入方
+    // 授权写入方 ID 列表
     //
-    // 数据层通过 onlyPassiveMember 校验 msg.sender 是否在 passivePod 中
-    // 任何 passivePod 成员均可写入，无需硬编码 contractId
+    // 数据层应对多个逻辑模块开放写入（最佳实践 §11.2 / §11.4）
+    // 通过 passiveModuleVerification 校验 msg.sender 是否在 passivePod 中
     //
     // 当前授权：
     //   ID=2  TradeEngine（当前版本，热升级后地址自动更新）
     //
     // 扩展示例（未来新增 LendingEngine 时）：
     //   ID=4  LendingEngine — 通过 fsca cluster link 添加 passivePod[4]
-    //   无需修改本合约代码，onlyPassiveMember 自动放行
+    //   然后在 setBalance/setUserData 上增加 passiveModuleVerification(4) 的重载
+    //   或使用下方的 _verifyWriter modifier 统一校验
     // =========================================================================
+
+    uint32 private constant TRADE_ENGINE_ID = 2;
 
     // ==========================================================================
     // 双重 mapping 存储表 1：代币余额
@@ -69,7 +71,7 @@ contract AccountStorage is normalTemplate {
     /// @notice 更新用户余额（仅 passivePod 中授权的逻辑合约可调用）
     function setBalance(uint32 tokenId, address user, uint256 amount)
         external
-        onlyPassiveMember
+        passiveModuleVerification(TRADE_ENGINE_ID)
     {
         _balances[tokenId][user] = amount;
     }
@@ -86,7 +88,7 @@ contract AccountStorage is normalTemplate {
     /// @notice 写入用户扩展数据（仅 passivePod 中授权的逻辑合约可调用）
     function setUserData(address user, bytes32 key, uint256 value)
         external
-        onlyPassiveMember
+        passiveModuleVerification(TRADE_ENGINE_ID)
     {
         _userData[user][key] = value;
     }
