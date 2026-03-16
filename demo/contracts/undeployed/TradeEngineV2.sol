@@ -2,6 +2,7 @@
 pragma solidity ^0.8.21;
 
 import "../core/lib/normaltemplate.sol";
+import "../core/lib/noReentryGuard.sol";
 import "../interfaces/IAccountStorage.sol";
 import "../interfaces/IRiskGuard.sol";
 
@@ -12,6 +13,7 @@ import "../interfaces/IRiskGuard.sol";
 //   1. 转账收取手续费（feeRate，basis points，默认 100 = 1%）
 //   2. 手续费入账到 feeRecipient（同样写入 AccountStorage，数据不出集群）
 //   3. 用户累计交易量记录到 AccountStorage._userData[user][VOLUME_KEY]
+//   4. 所有跨合约写操作使用 nonReentrant 防护（安全最佳实践）
 //
 // 升级时 AccountStorage 中的所有余额数据完全保留，零迁移
 // AccountStorage.passivePod[2] 由 EvokerManager 自动更新为 V2 地址
@@ -21,7 +23,7 @@ import "../interfaces/IRiskGuard.sol";
 //   activePod[3] = RiskGuardV1（风控版本不变）
 // =============================================================================
 
-contract TradeEngineV2 is normalTemplate {
+contract TradeEngineV2 is normalTemplate, NoReentryGuard {
 
     uint32 private constant ACCOUNT_STORAGE_ID = 1;
     uint32 private constant RISK_GUARD_ID       = 3;
@@ -67,7 +69,7 @@ contract TradeEngineV2 is normalTemplate {
     // ======================== 用户接口 ========================
 
     /// @notice 充值（与 V1 相同，充值不收费）
-    function deposit(uint32 tokenId, uint256 amount) external {
+    function deposit(uint32 tokenId, uint256 amount) external nonReentrant {
         require(amount > 0, "TradeEngineV2: zero amount");
         IAccountStorage store = _storage();
         uint256 current = store.getBalance(tokenId, msg.sender);
@@ -76,7 +78,7 @@ contract TradeEngineV2 is normalTemplate {
     }
 
     /// @notice 提款（与 V1 相同，提款不收费）
-    function withdraw(uint32 tokenId, uint256 amount) external {
+    function withdraw(uint32 tokenId, uint256 amount) external nonReentrant {
         require(amount > 0, "TradeEngineV2: zero amount");
         IAccountStorage store = _storage();
         uint256 current = store.getBalance(tokenId, msg.sender);
@@ -86,7 +88,7 @@ contract TradeEngineV2 is normalTemplate {
     }
 
     /// @notice 转账（新增：手续费 + 交易量统计）
-    function transfer(uint32 tokenId, address to, uint256 amount) external {
+    function transfer(uint32 tokenId, address to, uint256 amount) external nonReentrant {
         _risk().checkTransfer(tokenId, msg.sender, to, amount);
 
         IAccountStorage store = _storage();

@@ -44,6 +44,7 @@ contract RiskGuardV1 is normalTemplate {
     {
         require(!paused,             "RiskGuard: system paused");
         require(amount > 0,          "RiskGuard: zero amount");
+        require(from != address(0),  "RiskGuard: invalid sender");
         require(to != address(0),    "RiskGuard: invalid recipient");
         require(from != to,          "RiskGuard: self-transfer not allowed");
         require(amount <= maxSingleTransfer, "RiskGuard: exceeds single-tx limit");
