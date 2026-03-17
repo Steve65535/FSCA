@@ -10,6 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const { ethers } = require('ethers');
 const logger = require('../../logger');
+const credentials = require('../../../wallet/credentials');
 
 // 加载 chain 目录下的封装函数
 const chainProvider = require('../../../chain/provider');
@@ -27,15 +28,18 @@ function loadProjectConfig(rootDir) {
     }
 
     const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    const rpcUrl = credentials.resolveRpcUrl(config, rootDir);
 
-    if (!config.network || !config.network.rpc) {
-        throw new Error('Network RPC URL not configured in project.json');
+    if (!rpcUrl) {
+        throw new Error('Network RPC URL not configured (set FSCA_RPC_URL or network.rpc in project.json)');
     }
 
     if (!config.fsca || !config.fsca.clusterAddress) {
         throw new Error('ClusterManager address not found in project.json. Please run "fsca cluster init" first.');
     }
 
+    config.network = config.network || {};
+    config.network.rpc = rpcUrl;
     return config;
 }
 

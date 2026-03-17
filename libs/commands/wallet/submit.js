@@ -7,6 +7,7 @@ const path = require('path');
 const { ethers } = require('ethers');
 const logger = require('../../logger');
 const chainProvider = require('../../../chain/provider');
+const walletSigner = require('../../../wallet/signer');
 
 function loadProjectConfig(rootDir) {
     const configPath = path.join(rootDir, 'project.json');
@@ -55,7 +56,7 @@ module.exports = async function submit({ rootDir, args = {} }) {
 
         const multiSigAddress = config.fsca.multiSigAddress;
         const provider = chainProvider.getProvider(config.network.rpc);
-        const signer = new ethers.Wallet(config.account.privateKey, provider);
+        const signer = walletSigner.getSigner(config.account?.privateKey, provider);
 
         // 2. Load ABI and connect
         const multiSigABI = loadMultiSigABI(rootDir);

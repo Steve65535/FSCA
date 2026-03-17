@@ -10,6 +10,9 @@ const { CommandExecutor } = require('./executor');
 const fs = require('fs');
 const path = require('path');
 const logger = require('../libs/logger');
+const credentials = require('../wallet/credentials');
+
+credentials.loadEnvFile(process.cwd());
 
 // 加载命令配置
 const commandsConfigPath = path.join(__dirname, 'commands.json');

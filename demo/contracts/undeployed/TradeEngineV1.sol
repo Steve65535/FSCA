@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.21;
 
-import "../core/lib/normaltemplate.sol";
-import "../core/lib/noReentryGuard.sol";
-import "../interfaces/IAccountStorage.sol";
-import "../interfaces/IRiskGuard.sol";
+import "./lib/normaltemplate.sol";
+import "./lib/noReentryGuard.sol";
+import "./interfaces/IAccountStorage.sol";
+import "./interfaces/IRiskGuard.sol";
 
 // =============================================================================
 // CBS 最佳实践：纯逻辑合约（交易引擎 V1）

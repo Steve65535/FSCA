@@ -172,13 +172,13 @@ contract normalTemplate {
     function getAllPassiveAddresses() external view returns (address[] memory) {
         return passivePod.getAllAddresses();
     }
-    /// @notice 获取主动模块地址
-    function getActiveModuleAddress(uint32 _contractId) external view returns (address) {
+    /// @notice 获取主动模块地址（public：允许子合约内部调用）
+    function getActiveModuleAddress(uint32 _contractId) public view returns (address) {
         return activePod.get(_contractId);
     }
 
-    /// @notice 获取被动模块地址
-    function getPassiveModuleAddress(uint32 _contractId) external view returns (address) {
+    /// @notice 获取被动模块地址（public：允许子合约内部调用）
+    function getPassiveModuleAddress(uint32 _contractId) public view returns (address) {
         return passivePod.get(_contractId);
     }
 

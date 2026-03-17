@@ -1,4 +1,5 @@
 const { Wallet } = require("ethers");
+const credentials = require("./credentials");
 
 /**
  * 获取 Signer
@@ -7,12 +8,14 @@ const { Wallet } = require("ethers");
  * @returns {Wallet} Wallet 实例
  */
 function getSigner(privateKey, provider) {
-  if (!privateKey) {
-    throw new Error("Private key is required");
+  credentials.loadEnvFile(process.cwd());
+  const resolvedPrivateKey = process.env.FSCA_PRIVATE_KEY || privateKey;
+
+  if (!resolvedPrivateKey) {
+    throw new Error("Private key is required (set FSCA_PRIVATE_KEY or account.privateKey)");
   }
-  return new Wallet(privateKey, provider);
+  return new Wallet(resolvedPrivateKey, provider);
 }
 
 module.exports = { getSigner };
-
 

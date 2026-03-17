@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.21;
 
-import "../core/lib/normaltemplate.sol";
+import "./lib/normaltemplate.sol";
 
 // =============================================================================
 // CBS 最佳实践：纯逻辑合约（风控）

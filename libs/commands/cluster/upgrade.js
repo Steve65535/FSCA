@@ -20,6 +20,7 @@ const { ethers } = require('ethers');
 const chainProvider = require('../../../chain/provider');
 const walletSigner = require('../../../wallet/signer');
 const chainDeploy = require('../../../chain/deploy');
+const credentials = require('../../../wallet/credentials');
 
 const getProvider = chainProvider.getProvider;
 const getSigner = walletSigner.getSigner;
@@ -46,8 +47,14 @@ function loadProjectConfig(rootDir) {
         throw new Error('project.json not found. Run "fsca init" first.');
     }
     const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-    if (!config.network?.rpc) throw new Error('network.rpc not configured in project.json');
-    if (!config.account?.privateKey) throw new Error('account.privateKey not configured in project.json');
+    const rpcUrl = credentials.resolveRpcUrl(config, rootDir);
+    const privateKey = credentials.resolvePrivateKey(config, rootDir);
+    if (!rpcUrl) throw new Error('RPC URL not configured (set FSCA_RPC_URL or network.rpc in project.json)');
+    if (!privateKey) throw new Error('Private key not configured (set FSCA_PRIVATE_KEY or account.privateKey in project.json)');
+    config.network = config.network || {};
+    config.account = config.account || {};
+    config.network.rpc = rpcUrl;
+    config.account.privateKey = privateKey;
     if (!config.fsca?.clusterAddress) throw new Error('fsca.clusterAddress not configured. Run "fsca cluster init" first.');
     return config;
 }

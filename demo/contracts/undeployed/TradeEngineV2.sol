@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.21;
 
-import "../core/lib/normaltemplate.sol";
-import "../core/lib/noReentryGuard.sol";
-import "../interfaces/IAccountStorage.sol";
-import "../interfaces/IRiskGuard.sol";
+import "./lib/normaltemplate.sol";
+import "./lib/noReentryGuard.sol";
+import "./interfaces/IAccountStorage.sol";
+import "./interfaces/IRiskGuard.sol";
 
 // =============================================================================
 // 热升级演示：TradeEngineV2

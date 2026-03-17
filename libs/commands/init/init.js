@@ -261,6 +261,7 @@ async function promptForConfig(args = {}) {
     console.log('');
     console.log('Please configure the following settings:');
     console.log('(Press Enter to use default values)');
+    console.log('Secrets are recommended via .env (FSCA_PRIVATE_KEY), not project.json');
     console.log('');
   }
 
@@ -300,13 +301,15 @@ async function promptForConfig(args = {}) {
     config.blockConfirmations = parseInt(blockConfirmationsInput) || 1;
   }
 
-  // Account Private Key
+  // Account Private Key (optional, recommended via .env)
   if (args.accountPrivateKey || args.privateKey) {
     config.accountPrivateKey = args.accountPrivateKey || args.privateKey;
     if (!hasAllArgs) console.log(`Account Private Key: ${config.accountPrivateKey ? '***' : '(empty)'}`);
   } else {
-    config.accountPrivateKey = await promptUser('Account Private Key', '');
+    config.accountPrivateKey = await promptUser('Account Private Key (optional, prefer FSCA_PRIVATE_KEY in .env)', '');
   }
+
+  config.unsafeStoreKey = !!args['unsafe-store-key'];
 
   // Address
   if (args.address) {
@@ -359,6 +362,8 @@ function createProjectConfig(rootDir, config) {
     }
   }
 
+  const shouldStorePrivateKey = !!config.unsafeStoreKey;
+
   // 合并配置，优先使用用户输入的值
   const projectConfig = {
     network: {
@@ -368,7 +373,9 @@ function createProjectConfig(rootDir, config) {
       blockConfirmations: config.blockConfirmations || existingConfig.network?.blockConfirmations || 1
     },
     account: {
-      privateKey: config.accountPrivateKey || existingConfig.account?.privateKey || "",
+      privateKey: shouldStorePrivateKey
+        ? (config.accountPrivateKey || existingConfig.account?.privateKey || "")
+        : (existingConfig.account?.privateKey || ""),
       address: config.address || existingConfig.account?.address || "",
       mnemonic: existingConfig.account?.mnemonic || "",
       keyStorePath: existingConfig.account?.keyStorePath || "./configs/keystore.json"
@@ -404,6 +411,47 @@ function createProjectConfig(rootDir, config) {
   fs.writeFileSync(projectJsonPath, JSON.stringify(projectConfig, null, 2), 'utf-8');
   console.log('');
   console.log('✓ Created project.json configuration file');
+  if (!shouldStorePrivateKey && config.accountPrivateKey) {
+    console.log('✓ Private key was not written to project.json (use FSCA_PRIVATE_KEY in .env)');
+  }
+}
+
+/**
+ * Ensure .env exists and contains FSCA variable keys.
+ * Existing values are preserved; only missing keys are appended.
+ * @param {string} rootDir - 项目根目录
+ * @param {Object} config - 用户输入配置
+ */
+function ensureEnvFile(rootDir, config = {}) {
+  const envPath = path.join(rootDir, '.env');
+  const existing = fs.existsSync(envPath) ? fs.readFileSync(envPath, 'utf-8') : '';
+  const lines = existing ? existing.split(/\r?\n/) : [];
+  const hasKey = (key) => lines.some(line => line.trim().startsWith(`${key}=`));
+
+  const additions = [];
+  if (!hasKey('FSCA_PRIVATE_KEY')) {
+    additions.push(`FSCA_PRIVATE_KEY=${config.accountPrivateKey || ''}`);
+  }
+  if (!hasKey('FSCA_RPC_URL')) {
+    additions.push(`FSCA_RPC_URL=${config.rpc || ''}`);
+  }
+
+  if (!fs.existsSync(envPath)) {
+    const header = [
+      '# FSCA CLI environment variables',
+      '# Keep secrets here, do not commit real keys',
+      ''
+    ].join('\n');
+    fs.writeFileSync(envPath, header, 'utf-8');
+  }
+
+  if (additions.length > 0) {
+    const prefix = fs.readFileSync(envPath, 'utf-8').endsWith('\n') ? '' : '\n';
+    fs.appendFileSync(envPath, `${prefix}${additions.join('\n')}\n`, 'utf-8');
+    console.log('✓ Updated .env with FSCA variable names');
+  } else {
+    console.log('✓ .env already contains FSCA variable names');
+  }
 }
 
 /**
@@ -439,13 +487,16 @@ module.exports = async function init({ rootDir, args = {} }) {
 
     // 6. 创建全局配置文件 project.json
     createProjectConfig(rootDir, userConfig);
+    // 7. 确保 .env 存在且包含关键环境变量名
+    ensureEnvFile(rootDir, userConfig);
 
     console.log('');
     console.log('✓ FSCA project initialized successfully!');
     console.log('');
     console.log('Next steps:');
-    console.log('  1. Review and update project.json if needed');
-    console.log('  2. Start developing your smart contracts!');
+    console.log('  1. Put secrets in .env (FSCA_PRIVATE_KEY, optional FSCA_RPC_URL)');
+    console.log('  2. Review and update project.json if needed');
+    console.log('  3. Start developing your smart contracts!');
 
   } catch (error) {
     console.error('Failed to initialize FSCA project:', error.message);
@@ -455,4 +506,3 @@ module.exports = async function init({ rootDir, args = {} }) {
     process.exit(1);
   }
 };
-

@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { ethers } = require('ethers');
 const { exec } = require('child_process');
+const credentials = require('../../../wallet/credentials');
 
 // Load chain helpers
 const chainProvider = require('../../../chain/provider');
@@ -29,15 +30,18 @@ function loadProjectConfig(rootDir) {
     }
 
     const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    const rpcUrl = credentials.resolveRpcUrl(config, rootDir);
 
-    if (!config.network || !config.network.rpc) {
-        throw new Error('Network RPC URL not configured in project.json');
+    if (!rpcUrl) {
+        throw new Error('Network RPC URL not configured (set FSCA_RPC_URL or network.rpc in project.json)');
     }
 
     if (!config.fsca || !config.fsca.clusterAddress) {
         throw new Error('ClusterManager address not found in project.json. Please run "fsca cluster init" first.');
     }
 
+    config.network = config.network || {};
+    config.network.rpc = rpcUrl;
     return config;
 }
 
@@ -127,7 +131,14 @@ async function getArrayLength(contract, arrayName) {
 /**
  * Generate HTML with Mermaid
  */
-function generateHtml(mermaidContent) {
+function generateHtml(mermaidContent, nodes) {
+    // Build address table
+    let addressTable = '<table><thead><tr><th>ID</th><th>Name</th><th>Address</th></tr></thead><tbody>';
+    nodes.forEach(n => {
+        addressTable += `<tr><td>${n.id}</td><td>${n.name}</td><td><code>${n.address}</code></td></tr>`;
+    });
+    addressTable += '</tbody></table>';
+
     return `
 <!DOCTYPE html>
 <html lang="en">
@@ -138,22 +149,39 @@ function generateHtml(mermaidContent) {
     <style>
         body { font-family: sans-serif; padding: 20px; background: #f4f4f9; }
         h1 { color: #333; }
-        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        h2 { color: #555; margin-top: 30px; font-size: 1.2em; }
+        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
         #explanation { margin-top: 20px; font-size: 0.9em; color: #666; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background: #f0f0f0; font-weight: 600; }
+        code { background: #f5f5f5; padding: 2px 6px; border-radius: 3px; font-size: 0.9em; }
+        .note { background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px; margin-top: 15px; border-radius: 4px; }
     </style>
 </head>
 <body>
     <h1>FSCA Cluster Topology</h1>
+
     <div class="container">
+        <h2>Dependency Graph</h2>
         <pre class="mermaid">
 ${mermaidContent}
         </pre>
+        <div id="explanation">
+            <p><strong>Node:</strong> A Smart Contract Pod (Service).</p>
+            <p><strong>Solid Line (-->):</strong> Active Link (Source calls Target to modify state).</p>
+            <p><strong>Dotted Line (-.->):</strong> Passive Link (Source reads/verifies Target).</p>
+        </div>
     </div>
-    <div id="explanation">
-        <p><strong>Node:</strong> A Smart Contract Pod (Service).</p>
-        <p><strong>Solid Line (-->):</strong> Active Link (Source calls Target to modify state).</p>
-        <p><strong>Dotted Line (-.->):</strong> Passive Link (Source reads/verifies Target).</p>
+
+    <div class="container">
+        <h2>Contract Registry</h2>
+        ${addressTable}
+        <div class="note">
+            <strong>Hot Upgrade Verification:</strong> When comparing graphs before/after upgrade, check that the same ID points to a different address while maintaining the same topology.
+        </div>
     </div>
+
     <script type="module">
         import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
         mermaid.initialize({ startOnLoad: true, theme: 'default' });
@@ -243,10 +271,10 @@ module.exports = async function graph({ rootDir, args = {} }) {
         let mermaidCode = "graph TD\n";
 
         // Add Nodes
-        // Format: ID[Name<br/>(ContractId)]
+        // Format: ID[Name<br/>(ContractId)<br/>Address]
         nodes.forEach(n => {
-            mermaidCode += `    N${n.id}["${n.name}<br/>(ID: ${n.id})"]\n`;
-            // Add click event? Maybe not supported in basic mermaid view
+            const shortAddr = `${n.address.substring(0, 6)}...${n.address.substring(38)}`;
+            mermaidCode += `    N${n.id}["${n.name}<br/>(ID: ${n.id})<br/>${shortAddr}"]\n`;
         });
 
         // Add Edges
@@ -267,7 +295,7 @@ module.exports = async function graph({ rootDir, args = {} }) {
 
         // 4. Output
         const outputPath = path.join(rootDir, 'cluster-topology.html');
-        fs.writeFileSync(outputPath, generateHtml(mermaidCode));
+        fs.writeFileSync(outputPath, generateHtml(mermaidCode, nodes));
 
         console.log("");
         console.log("✓ Topology graph generated successfully!");

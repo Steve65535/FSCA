@@ -19,6 +19,7 @@ const chainProvider = require('../../../chain/provider');
 const chainTx = require('../../../chain/tx');
 const chainAbi = require('../../../chain/abi');
 const walletSigner = require('../../../wallet/signer');
+const credentials = require('../../../wallet/credentials');
 
 /**
  * 加载项目配置
@@ -33,13 +34,20 @@ function loadProjectConfig(rootDir) {
 
   const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
 
-  if (!config.network || !config.network.rpc) {
-    throw new Error('Network RPC URL not configured in project.json');
+  const rpcUrl = credentials.resolveRpcUrl(config, rootDir);
+  if (!rpcUrl) {
+    throw new Error('Network RPC URL not configured (set FSCA_RPC_URL or network.rpc in project.json)');
   }
 
-  if (!config.account || !config.account.privateKey) {
-    throw new Error('Account private key not configured in project.json');
+  const privateKey = credentials.resolvePrivateKey(config, rootDir);
+  if (!privateKey) {
+    throw new Error('Account private key not configured (set FSCA_PRIVATE_KEY or account.privateKey in project.json)');
   }
+
+  config.network = config.network || {};
+  config.account = config.account || {};
+  config.network.rpc = rpcUrl;
+  config.account.privateKey = privateKey;
 
   return config;
 }
@@ -381,4 +389,3 @@ module.exports = async function clusterInit({ rootDir, args = {} }) {
     process.exit(1);
   }
 };
-
