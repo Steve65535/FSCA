@@ -79,6 +79,16 @@ function loadArtifact(rootDir, contractName) {
     throw new Error(`Artifact not found for "${contractName}". Run "npx hardhat compile" first.`);
 }
 
+function buildConstructorArgs(artifact, clusterAddr, registeredName) {
+    const inputs = artifact?.abi?.find(item => item.type === 'constructor')?.inputs || [];
+    if (inputs.length === 0) return [];
+    if (inputs.length === 1) return [clusterAddr];
+    if (inputs.length === 2) return [clusterAddr, registeredName];
+    throw new Error(
+        `Unsupported constructor for upgrade target: expected 0/1/2 args, got ${inputs.length}.`
+    );
+}
+
 module.exports = async function upgrade({ rootDir, args = {} }) {
     try {
         const { id, contract: contractName, 'skip-copy-pods': skipCopyPods } = args;
@@ -127,8 +137,8 @@ module.exports = async function upgrade({ rootDir, args = {} }) {
             execSync('npx hardhat compile', { cwd: rootDir, stdio: 'inherit' });
         }
         const artifact = loadArtifact(rootDir, contractName);
-        // 用户合约继承 normalTemplate，构造函数通常只需要 clusterAddress
-        const newAddr = await deployContract(signer, artifact.abi, artifact.bytecode, [clusterAddr]);
+        const constructorArgs = buildConstructorArgs(artifact, clusterAddr, registeredName);
+        const newAddr = await deployContract(signer, artifact.abi, artifact.bytecode, constructorArgs);
         console.log(`      Deployed at: ${newAddr}`);
 
         // 4. 将旧合约 pod 配置写入新合约（BeforeMount，此时 whetherMounted=0）
