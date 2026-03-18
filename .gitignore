@@ -33,6 +33,9 @@ coverage.json
 # Documents (local planning)
 documents/test-plan.md
 documents/workspace/
+# Whitepaper workspace archives
+documents/workspace/FSCA_Whitepaper.md
+documents/workspace/FSCA_白皮书.md
 
 # Deployment artifacts
 deployments/

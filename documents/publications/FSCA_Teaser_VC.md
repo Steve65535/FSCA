@@ -49,7 +49,7 @@ Autonomous AI agents operating on-chain require dynamic service discovery, fine-
 | CLI toolchain (18 commands, ~4,900 LOC JavaScript) | Complete |
 | Full lifecycle integration test (deploy, mount, link, upgrade) | Passed |
 | Parallel EVM compatibility (Sei Testnet) | Verified |
-| Documentation (whitepaper, user guide, demo — EN/ZH) | Complete |
+| Documentation (user guide and demo — EN/ZH; whitepaper archived/offline) | Updated |
 | npm published (`fsca-cli`) | Live |
 | Total codebase | ~10,000 lines |
 
