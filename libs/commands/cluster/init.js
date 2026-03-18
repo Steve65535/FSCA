@@ -22,6 +22,8 @@ const walletSigner = require('../../../wallet/signer');
 const credentials = require('../../../wallet/credentials');
 const { resolveCleanupMode, performCleanup, findSourceFile, findArtifactFile } = require('../cleanup');
 const { confirm } = require('../confirm');
+const { sendTx } = require('../txExecutor');
+const { acquireLock } = require('../clusterLock');
 
 /**
  * 加载项目配置
@@ -224,128 +226,150 @@ module.exports = async function clusterInit({ rootDir, args = {} }) {
     console.log(`Network: ${config.network.name} (${config.network.rpc})`);
     console.log('');
 
-    // 4. 使用本地钱包部署多签钱包
+    // Checkpoint helpers (lock key = rootDir since clusterAddress unknown yet)
+    const cpPath = path.join(rootDir, 'cluster-init-checkpoint.json');
+    function writeCheckpoint(data) {
+      fs.writeFileSync(cpPath, JSON.stringify(data, null, 2), 'utf-8');
+    }
+    function deleteCheckpoint() {
+      if (fs.existsSync(cpPath)) fs.unlinkSync(cpPath);
+    }
+
+    let checkpoint = null;
+    if (fs.existsSync(cpPath)) {
+      try { checkpoint = JSON.parse(fs.readFileSync(cpPath, 'utf-8')); } catch { checkpoint = null; }
+    }
+    if (checkpoint && args.restart) {
+      deleteCheckpoint(); checkpoint = null;
+      console.log('  Restarting from scratch (--restart).');
+    } else if (checkpoint && !args.resume) {
+      const resume = await confirm('Found cluster-init-checkpoint.json. Resume from last checkpoint?', false);
+      if (!resume) { deleteCheckpoint(); checkpoint = null; }
+    }
+    if (checkpoint) console.log(`  Resuming cluster init from step: ${checkpoint.completedSteps.join(', ') || '(none)'}`);
+
+    const completedSteps = new Set(checkpoint ? checkpoint.completedSteps : []);
+    const cpState = checkpoint ? checkpoint.state : {};
+
+    const lockKey = path.resolve(rootDir);
+    const lock = acquireLock(rootDir, lockKey, 'cluster init');
+    try {
+
+    // Step 1: Deploy MultiSigWallet
     console.log('Step 1: Deploying MultiSigWallet using local wallet...');
-    const multisigArtifact = loadArtifact(rootDir, 'MultiSigWallet');
-    const owners = [deployerAddress]; // 初始时只有 config 文件里的钱包地址
-    const multisigAddress = await deployContract(
-      signer,
-      multisigArtifact.abi,
-      multisigArtifact.bytecode,
-      [owners, threshold] // threshold 默认为 1
-    );
+    let multisigAddress = cpState.multisigAddress || null;
+    if (!completedSteps.has('deploy:MultiSigWallet')) {
+      const multisigArtifact = loadArtifact(rootDir, 'MultiSigWallet');
+      const owners = [deployerAddress];
+      multisigAddress = await deployContract(signer, multisigArtifact.abi, multisigArtifact.bytecode, [owners, threshold]);
+      completedSteps.add('deploy:MultiSigWallet');
+      writeCheckpoint({ completedSteps: [...completedSteps], state: { multisigAddress } });
+    } else {
+      console.log(`  ↩ skip deploy:MultiSigWallet (already done): ${multisigAddress}`);
+    }
     console.log(`✓ MultiSigWallet deployed at: ${multisigAddress}`);
     console.log('');
 
-    // 5. 使用本地钱包部署 ClusterManager
+    // Step 2: Deploy ClusterManager
     console.log('Step 2: Deploying ClusterManager using local wallet...');
-    const clusterArtifact = loadArtifact(rootDir, 'ClusterManager');
-    const clusterAddress = await deployContract(
-      signer,
-      clusterArtifact.abi,
-      clusterArtifact.bytecode,
-      [multisigAddress] // rootAdmin 设置为多签钱包地址
-    );
+    let clusterAddress = cpState.clusterAddress || null;
+    if (!completedSteps.has('deploy:ClusterManager')) {
+      const clusterArtifact = loadArtifact(rootDir, 'ClusterManager');
+      clusterAddress = await deployContract(signer, clusterArtifact.abi, clusterArtifact.bytecode, [multisigAddress]);
+      completedSteps.add('deploy:ClusterManager');
+      writeCheckpoint({ completedSteps: [...completedSteps], state: { multisigAddress, clusterAddress } });
+    } else {
+      console.log(`  ↩ skip deploy:ClusterManager (already done): ${clusterAddress}`);
+    }
     console.log(`✓ ClusterManager deployed at: ${clusterAddress}`);
     console.log('');
 
-    // 6. 使用多签钱包将 config 文件里的钱包加入 ClusterManager 的 operator
+    // Step 3: addOperator via MultiSig
     console.log('Step 3: Adding operator to ClusterManager via MultiSig...');
-    const multisigContract = new ethers.Contract(multisigAddress, multisigArtifact.abi, signer);
-    const addOperatorData = encodeCall(
-      clusterArtifact.abi,
-      'addOperator',
-      [deployerAddress] // 将 config 文件里的钱包地址加入 operator
-    );
-
-    // 通过多签钱包提交、确认并执行交易
-    const addOperatorSubmit = await multisigContract.submitTransaction(
-      clusterAddress,
-      0,
-      addOperatorData
-    );
-    await addOperatorSubmit.wait();
-    const addOperatorTxIndex = await multisigContract.transactionCount() - 1n;
-    await (await multisigContract.confirmTransaction(addOperatorTxIndex)).wait();
-    await (await multisigContract.executeTransaction(addOperatorTxIndex)).wait();
+    const multisigArtifact2 = loadArtifact(rootDir, 'MultiSigWallet');
+    const clusterArtifact2 = loadArtifact(rootDir, 'ClusterManager');
+    const multisigContract = new ethers.Contract(multisigAddress, multisigArtifact2.abi, signer);
+    if (!completedSteps.has('addOperator')) {
+      const addOperatorData = encodeCall(clusterArtifact2.abi, 'addOperator', [deployerAddress]);
+      await sendTx(() => multisigContract.submitTransaction(clusterAddress, 0, addOperatorData), { label: 'submitTx:addOperator' });
+      const addOperatorTxIndex = await multisigContract.transactionCount() - 1n;
+      await sendTx(() => multisigContract.confirmTransaction(addOperatorTxIndex), { label: 'confirmTx:addOperator' });
+      await sendTx(() => multisigContract.executeTransaction(addOperatorTxIndex), { label: 'executeTx:addOperator' });
+      completedSteps.add('addOperator');
+      writeCheckpoint({ completedSteps: [...completedSteps], state: { multisigAddress, clusterAddress } });
+    } else {
+      console.log('  ↩ skip addOperator (already done)');
+    }
     console.log(`✓ Added ${deployerAddress} as operator in ClusterManager`);
     console.log('');
 
-    // 7. 使用 operator 钱包（config 文件里的钱包）部署 EvokerManager
+    // Step 4: Deploy EvokerManager
     console.log('Step 4: Deploying EvokerManager using operator wallet (using ClusterManager address)...');
-    const evokerArtifact = loadArtifact(rootDir, 'EvokerManager');
-    const evokerAddress = await deployContract(
-      signer, // 使用 operator 钱包（config 文件里的钱包）
-      evokerArtifact.abi,
-      evokerArtifact.bytecode,
-      [clusterAddress] // 使用 ClusterManager 地址
-    );
+    let evokerAddress = cpState.evokerAddress || null;
+    if (!completedSteps.has('deploy:EvokerManager')) {
+      const evokerArtifact = loadArtifact(rootDir, 'EvokerManager');
+      evokerAddress = await deployContract(signer, evokerArtifact.abi, evokerArtifact.bytecode, [clusterAddress]);
+      completedSteps.add('deploy:EvokerManager');
+      writeCheckpoint({ completedSteps: [...completedSteps], state: { multisigAddress, clusterAddress, evokerAddress } });
+    } else {
+      console.log(`  ↩ skip deploy:EvokerManager (already done): ${evokerAddress}`);
+    }
     console.log(`✓ EvokerManager deployed at: ${evokerAddress}`);
     console.log('');
 
-    // 8. 使用 operator 钱包（config 文件里的钱包）部署 RightManager
+    // Step 5: Deploy ProxyWallet (RightManager)
     console.log('Step 5: Deploying RightManager (ProxyWallet) using operator wallet (using ClusterManager address)...');
-    const proxyWalletArtifact = loadArtifact(rootDir, 'ProxyWallet');
-    const rightManagerAddress = await deployContract(
-      signer, // 使用 operator 钱包（config 文件里的钱包）
-      proxyWalletArtifact.abi,
-      proxyWalletArtifact.bytecode,
-      [clusterAddress] // 使用 ClusterManager 地址
-    );
+    let rightManagerAddress = cpState.rightManagerAddress || null;
+    if (!completedSteps.has('deploy:ProxyWallet')) {
+      const proxyWalletArtifact = loadArtifact(rootDir, 'ProxyWallet');
+      rightManagerAddress = await deployContract(signer, proxyWalletArtifact.abi, proxyWalletArtifact.bytecode, [clusterAddress]);
+      completedSteps.add('deploy:ProxyWallet');
+      writeCheckpoint({ completedSteps: [...completedSteps], state: { multisigAddress, clusterAddress, evokerAddress, rightManagerAddress } });
+    } else {
+      console.log(`  ↩ skip deploy:ProxyWallet (already done): ${rightManagerAddress}`);
+    }
     console.log(`✓ RightManager (ProxyWallet) deployed at: ${rightManagerAddress}`);
     console.log('');
 
-    // 9. 在 ClusterManager 中设置 EvokerManager 和 RightManager（通过多签钱包）
+    // Step 6: setEvokerManager + setRightManager via MultiSig
     console.log('Step 6: Configuring ClusterManager via MultiSig...');
-    const setEvokerData = encodeCall(
-      clusterArtifact.abi,
-      'setEvokerManager',
-      [evokerAddress]
-    );
-
-    const setRightData = encodeCall(
-      clusterArtifact.abi,
-      'setRightManager',
-      [rightManagerAddress]
-    );
-
-    // 提交并执行设置 EvokerManager 的交易
-    const setEvokerSubmit = await multisigContract.submitTransaction(
-      clusterAddress,
-      0,
-      setEvokerData
-    );
-    await setEvokerSubmit.wait();
-    const setEvokerTxIndex = await multisigContract.transactionCount() - 1n;
-    await (await multisigContract.confirmTransaction(setEvokerTxIndex)).wait();
-    await (await multisigContract.executeTransaction(setEvokerTxIndex)).wait();
+    if (!completedSteps.has('setEvokerManager')) {
+      const setEvokerData = encodeCall(clusterArtifact2.abi, 'setEvokerManager', [evokerAddress]);
+      await sendTx(() => multisigContract.submitTransaction(clusterAddress, 0, setEvokerData), { label: 'submitTx:setEvokerManager' });
+      const setEvokerTxIndex = await multisigContract.transactionCount() - 1n;
+      await sendTx(() => multisigContract.confirmTransaction(setEvokerTxIndex), { label: 'confirmTx:setEvokerManager' });
+      await sendTx(() => multisigContract.executeTransaction(setEvokerTxIndex), { label: 'executeTx:setEvokerManager' });
+      completedSteps.add('setEvokerManager');
+      writeCheckpoint({ completedSteps: [...completedSteps], state: { multisigAddress, clusterAddress, evokerAddress, rightManagerAddress } });
+    } else {
+      console.log('  ↩ skip setEvokerManager (already done)');
+    }
     console.log('✓ Set EvokerManager in ClusterManager');
 
-    // 提交并执行设置 RightManager 的交易
-    const setRightSubmit = await multisigContract.submitTransaction(
-      clusterAddress,
-      0,
-      setRightData
-    );
-    await setRightSubmit.wait();
-    const setRightTxIndex = await multisigContract.transactionCount() - 1n;
-    await (await multisigContract.confirmTransaction(setRightTxIndex)).wait();
-    await (await multisigContract.executeTransaction(setRightTxIndex)).wait();
+    if (!completedSteps.has('setRightManager')) {
+      const setRightData = encodeCall(clusterArtifact2.abi, 'setRightManager', [rightManagerAddress]);
+      await sendTx(() => multisigContract.submitTransaction(clusterAddress, 0, setRightData), { label: 'submitTx:setRightManager' });
+      const setRightTxIndex = await multisigContract.transactionCount() - 1n;
+      await sendTx(() => multisigContract.confirmTransaction(setRightTxIndex), { label: 'confirmTx:setRightManager' });
+      await sendTx(() => multisigContract.executeTransaction(setRightTxIndex), { label: 'executeTx:setRightManager' });
+      completedSteps.add('setRightManager');
+      writeCheckpoint({ completedSteps: [...completedSteps], state: { multisigAddress, clusterAddress, evokerAddress, rightManagerAddress } });
+    } else {
+      console.log('  ↩ skip setRightManager (already done)');
+    }
     console.log('✓ Set RightManager in ClusterManager');
     console.log('');
 
-    // 10. 将部署的合约文件从 undeployed 复制到 deployed 文件夹
+    // Step 7: Copy deployed contracts to deployed folder
     console.log('Step 7: Moving deployed contracts to deployed folder...');
     const contractsDir = path.join(rootDir, 'contracts');
     const undeployedDir = path.join(contractsDir, 'undeployed');
     const deployedDir = path.join(contractsDir, 'deployed');
 
-    // 确保 deployed 目录存在
     if (!fs.existsSync(deployedDir)) {
       fs.mkdirSync(deployedDir, { recursive: true });
     }
 
-    // 需要复制的合约文件
     const contractsToMove = [
       { name: 'ClusterManager', path: 'structure/clustermanager.sol' },
       { name: 'EvokerManager', path: 'structure/evokermanager.sol' },
@@ -355,13 +379,8 @@ module.exports = async function clusterInit({ rootDir, args = {} }) {
     for (const contract of contractsToMove) {
       const sourcePath = path.join(undeployedDir, contract.path);
       const targetPath = path.join(deployedDir, contract.path);
-
-      // 创建目标目录
       const targetDir = path.dirname(targetPath);
-      if (!fs.existsSync(targetDir)) {
-        fs.mkdirSync(targetDir, { recursive: true });
-      }
-
+      if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
       if (fs.existsSync(sourcePath)) {
         fs.copyFileSync(sourcePath, targetPath);
         console.log(`✓ Copied ${contract.name} to deployed folder`);
@@ -397,13 +416,10 @@ module.exports = async function clusterInit({ rootDir, args = {} }) {
       }
     }
 
-    // 9. 更新 project.json
-    updateProjectConfig(rootDir, {
-      multisigAddress,
-      clusterAddress,
-      evokerManagerAddress: evokerAddress,
-      rightManagerAddress
-    });
+    // Update project.json
+    updateProjectConfig(rootDir, { multisigAddress, clusterAddress, evokerManagerAddress: evokerAddress, rightManagerAddress });
+
+    deleteCheckpoint();
 
     console.log('');
     console.log('✓ FSCA cluster deployed successfully!');
@@ -415,6 +431,10 @@ module.exports = async function clusterInit({ rootDir, args = {} }) {
     console.log(`  RightManager: ${rightManagerAddress}`);
     console.log('');
     console.log('All addresses have been saved to project.json');
+
+    } finally {
+      lock.release();
+    }
 
   } catch (error) {
     console.error('Failed to deploy cluster:', error.message);

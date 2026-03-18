@@ -25,6 +25,8 @@ const { resolveCleanupMode, performCleanup, findSourceFile, findArtifactFile } =
 const { confirm } = require('../confirm');
 const analyze = require('./auto/analyze');
 const { nextGeneration, nextDeploySeq } = require('../version');
+const { sendTx } = require('../txExecutor');
+const { acquireLock } = require('../clusterLock');
 
 const getProvider = chainProvider.getProvider;
 const getSigner = walletSigner.getSigner;
@@ -123,13 +125,47 @@ module.exports = async function upgrade({ rootDir, args = {} }) {
         const contractId = Number(id);
         const clusterAddr = config.fsca.clusterAddress;
 
+        // Checkpoint helpers
+        const cpPath = path.join(rootDir, 'upgrade-checkpoint.json');
+        function writeCheckpoint(data) {
+            fs.writeFileSync(cpPath, JSON.stringify(data, null, 2), 'utf-8');
+        }
+        function deleteCheckpoint() {
+            if (fs.existsSync(cpPath)) fs.unlinkSync(cpPath);
+        }
+
+        // Resume / restart logic
+        let checkpoint = null;
+        if (fs.existsSync(cpPath)) {
+            checkpoint = JSON.parse(fs.readFileSync(cpPath, 'utf-8'));
+            if (checkpoint.clusterAddress !== clusterAddr || checkpoint.contractId !== contractId) {
+                checkpoint = null; // stale checkpoint for different cluster/contract
+            }
+        }
+        if (checkpoint && args.restart) {
+            deleteCheckpoint();
+            checkpoint = null;
+            console.log('  Restarting from scratch (--restart).');
+        } else if (checkpoint && !args.resume) {
+            const resume = await confirm(`Found upgrade-checkpoint.json for contractId=${contractId}. Resume from last checkpoint?`, false);
+            if (!resume) { deleteCheckpoint(); checkpoint = null; }
+        }
+        if (checkpoint) {
+            console.log(`  Resuming upgrade from step: ${checkpoint.completedSteps.join(', ') || '(none)'}`);
+        }
+
+        const completedSteps = new Set(checkpoint ? checkpoint.completedSteps : []);
+        const cpState = checkpoint ? checkpoint.state : {};
+
         const provider = getProvider(config.network.rpc);
         const rawSigner = getSigner(config.account.privateKey, provider);
-        // NonceManager ensures sequential nonces across deploy + multiple txs
         const signer = new ethers.NonceManager(rawSigner);
 
         const clusterRead = new ethers.Contract(clusterAddr, CLUSTER_ABI, provider);
         const clusterWrite = new ethers.Contract(clusterAddr, CLUSTER_ABI, signer);
+
+        const lock = acquireLock(rootDir, clusterAddr, 'cluster upgrade');
+        try {
 
         // 1. 读取旧合约注册信息
         console.log(`[1/6] Fetching contract #${contractId} from registry...`);
@@ -154,54 +190,77 @@ module.exports = async function upgrade({ rootDir, args = {} }) {
 
         // 3. 编译 + 部署新合约
         console.log(`[3/6] Compiling and deploying ${contractName}...`);
-        const artifactsDir = path.join(rootDir, 'artifacts');
-        if (!fs.existsSync(artifactsDir)) {
-            console.log('      Artifacts not found, compiling...');
-            execSync('npx hardhat compile', { cwd: rootDir, stdio: 'inherit' });
+        let newAddr = cpState.newAddr || null;
+        if (!completedSteps.has('deploy')) {
+            const artifactsDir = path.join(rootDir, 'artifacts');
+            if (!fs.existsSync(artifactsDir)) {
+                console.log('      Artifacts not found, compiling...');
+                execSync('npx hardhat compile', { cwd: rootDir, stdio: 'inherit' });
+            }
+            const artifact = loadArtifact(rootDir, contractName);
+            const constructorArgs = buildConstructorArgs(artifact, clusterAddr, registeredName);
+            newAddr = await deployContract(signer, artifact.abi, artifact.bytecode, constructorArgs);
+            completedSteps.add('deploy');
+            writeCheckpoint({ clusterAddress: clusterAddr, contractId, completedSteps: [...completedSteps], state: { newAddr } });
+        } else {
+            console.log(`  ↩ skip deploy (already done): ${newAddr}`);
         }
-        const artifact = loadArtifact(rootDir, contractName);
-        const constructorArgs = buildConstructorArgs(artifact, clusterAddr, registeredName);
-        const newAddr = await deployContract(signer, artifact.abi, artifact.bytecode, constructorArgs);
         console.log(`      Deployed at: ${newAddr}`);
 
         // 4. 将旧合约 pod 配置写入新合约（BeforeMount，此时 whetherMounted=0）
         if (!skipCopyPods && (activeModules.length > 0 || passiveModules.length > 0)) {
             console.log(`[4/6] Copying pod configuration to new contract...`);
             for (const mod of activeModules) {
-                const tx = await clusterWrite.addActivePodBeforeMount(newAddr, mod.moduleAddress, mod.contractId);
-                await tx.wait();
+                const stepKey = `pod-copy:active:${mod.contractId}`;
+                if (completedSteps.has(stepKey)) { console.log(`  ↩ skip ${stepKey}`); continue; }
+                await sendTx(() => clusterWrite.addActivePodBeforeMount(newAddr, mod.moduleAddress, mod.contractId), { label: stepKey });
                 console.log(`      Active  id=${mod.contractId}  ${mod.moduleAddress}`);
+                completedSteps.add(stepKey);
+                writeCheckpoint({ clusterAddress: clusterAddr, contractId, completedSteps: [...completedSteps], state: { newAddr } });
             }
             for (const mod of passiveModules) {
-                const tx = await clusterWrite.addPassivePodBeforeMount(newAddr, mod.moduleAddress, mod.contractId);
-                await tx.wait();
+                const stepKey = `pod-copy:passive:${mod.contractId}`;
+                if (completedSteps.has(stepKey)) { console.log(`  ↩ skip ${stepKey}`); continue; }
+                await sendTx(() => clusterWrite.addPassivePodBeforeMount(newAddr, mod.moduleAddress, mod.contractId), { label: stepKey });
                 console.log(`      Passive id=${mod.contractId}  ${mod.moduleAddress}`);
+                completedSteps.add(stepKey);
+                writeCheckpoint({ clusterAddress: clusterAddr, contractId, completedSteps: [...completedSteps], state: { newAddr } });
             }
         } else {
             console.log(`[4/6] No pods to configure.`);
         }
 
-        // 5. 卸载旧合约（触发 EvokerManager.unmount，自动清除所有边）
+        // 5. 卸载旧合约
         console.log(`[5/6] Unmounting old contract #${contractId}...`);
-        await (await clusterWrite.deleteContract(contractId)).wait();
+        if (!completedSteps.has('delete')) {
+            await sendTx(() => clusterWrite.deleteContract(contractId), { label: `deleteContract #${contractId}` });
+            completedSteps.add('delete');
+            writeCheckpoint({ clusterAddress: clusterAddr, contractId, completedSteps: [...completedSteps], state: { newAddr } });
+        } else {
+            console.log(`  ↩ skip delete (already done)`);
+        }
         console.log(`      Unmounted: ${oldAddr}`);
 
-        // 6. 注册新合约（触发 EvokerManager.mount，重建所有边）
+        // 6. 注册新合约
         console.log(`[6/6] Registering new contract...`);
-        await (await clusterWrite.registerContract(contractId, registeredName, newAddr)).wait();
+        if (!completedSteps.has('register')) {
+            await sendTx(() => clusterWrite.registerContract(contractId, registeredName, newAddr), { label: `registerContract #${contractId}` });
+            completedSteps.add('register');
+            writeCheckpoint({ clusterAddress: clusterAddr, contractId, completedSteps: [...completedSteps], state: { newAddr } });
+        } else {
+            console.log(`  ↩ skip register (already done)`);
+        }
         console.log(`      Mounted: ${newAddr}`);
 
         // 更新 project.json
         const timestamp = Math.floor(Date.now() / 1000);
         if (!config.fsca.alldeployedcontracts) config.fsca.alldeployedcontracts = [];
 
-        // Build podSnapshot (contractId only, no addresses) from old contract's pods
         const podSnapshot = {
             active: activeModules.map(m => ({ contractId: Number(m.contractId) })),
             passive: passiveModules.map(m => ({ contractId: Number(m.contractId) })),
         };
 
-        // Mark old record as deprecated, save its podSnapshot for rollback
         config.fsca.alldeployedcontracts = config.fsca.alldeployedcontracts.map(r => {
             if (r.address && r.address.toLowerCase() === oldAddr.toLowerCase()) {
                 return { ...r, status: 'deprecated', podSnapshot };
@@ -209,7 +268,6 @@ module.exports = async function upgrade({ rootDir, args = {} }) {
             return r;
         });
 
-        // New record with generation + status
         const newGen = nextGeneration(config.fsca.alldeployedcontracts, contractId);
         const newSeq = nextDeploySeq(config.fsca.alldeployedcontracts);
         config.fsca.alldeployedcontracts.push({
@@ -228,7 +286,6 @@ module.exports = async function upgrade({ rootDir, args = {} }) {
         if (config.fsca.unmountedcontracts) {
             config.fsca.unmountedcontracts = config.fsca.unmountedcontracts.filter(c => c.address !== oldAddr);
         }
-        // Update runningcontracts
         if (!config.fsca.runningcontracts) config.fsca.runningcontracts = [];
         config.fsca.runningcontracts = config.fsca.runningcontracts.filter(
             c => c.address && c.address.toLowerCase() !== oldAddr.toLowerCase()
@@ -238,6 +295,8 @@ module.exports = async function upgrade({ rootDir, args = {} }) {
         config.fsca.currentOperating = newAddr;
         saveProjectConfig(rootDir, config);
         console.log('      Updated project.json');
+
+        deleteCheckpoint();
 
         // Cleanup new contract's source/artifacts
         const cleanupMode = resolveCleanupMode(args, config);
@@ -271,6 +330,10 @@ module.exports = async function upgrade({ rootDir, args = {} }) {
         console.log(`  New: ${newAddr}`);
         if (skipCopyPods) {
             console.log(`  Note: pods not copied. Use "fsca cluster link" to configure.`);
+        }
+
+        } finally {
+            lock.release();
         }
 
     } catch (error) {

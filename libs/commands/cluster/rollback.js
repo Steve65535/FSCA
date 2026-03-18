@@ -21,6 +21,8 @@ const walletSigner = require('../../../wallet/signer');
 const credentials = require('../../../wallet/credentials');
 const { confirm } = require('../confirm');
 const { normalizeRecord, findMounted, findGeneration, findPreviousGeneration } = require('../version');
+const { sendTx } = require('../txExecutor');
+const { acquireLock } = require('../clusterLock');
 
 const getProvider = chainProvider.getProvider;
 const getSigner = walletSigner.getSigner;
@@ -134,6 +136,9 @@ module.exports = async function rollback({ rootDir, args = {} }) {
         const clusterAddr = config.fsca.clusterAddress;
         const clusterWrite = new ethers.Contract(clusterAddr, CLUSTER_ABI, signer);
 
+        const lock = acquireLock(rootDir, clusterAddr, 'cluster rollback');
+        try {
+
         let currentActivePods = [];
         let currentPassivePods = [];
         try {
@@ -160,14 +165,14 @@ module.exports = async function rollback({ rootDir, args = {} }) {
         // Step A: deleteContract
         writeCheckpoint(rootDir, { step: 'A', contractId, targetAddr, currentAddr });
         console.log(`\n[1/3] Unmounting current contract #${contractId}...`);
-        await (await clusterWrite.deleteContract(contractId)).wait();
+        await sendTx(() => clusterWrite.deleteContract(contractId), { label: `deleteContract #${contractId}` });
         console.log(`      Unmounted: ${currentAddr}`);
 
         // Step B: registerContract
         writeCheckpoint(rootDir, { step: 'B', contractId, targetAddr, currentAddr });
         console.log(`[2/3] Mounting target contract...`);
         try {
-            await (await clusterWrite.registerContract(contractId, registeredName, targetAddr)).wait();
+            await sendTx(() => clusterWrite.registerContract(contractId, registeredName, targetAddr), { label: `registerContract #${contractId}` });
             console.log(`      Mounted: ${targetAddr}`);
         } catch (e) {
             report.errors.push(`Step B failed: ${e.message}`);
@@ -198,9 +203,9 @@ module.exports = async function rollback({ rootDir, args = {} }) {
                     throw new Error(`contractId=${pod.contractId} not found in registry`);
                 }
                 if (pod.type === 'active') {
-                    await (await clusterWrite.addActivePodAfterMount(targetAddr, depAddr, pod.contractId)).wait();
+                    await sendTx(() => clusterWrite.addActivePodAfterMount(targetAddr, depAddr, pod.contractId), { label: `addActivePod contractId=${pod.contractId}` });
                 } else {
-                    await (await clusterWrite.addPassivePodAfterMount(targetAddr, depAddr, pod.contractId)).wait();
+                    await sendTx(() => clusterWrite.addPassivePodAfterMount(targetAddr, depAddr, pod.contractId), { label: `addPassivePod contractId=${pod.contractId}` });
                 }
                 console.log(`      Restored ${pod.type} pod: contractId=${pod.contractId} → ${depAddr}`);
                 report.podRestoreResults.push({ contractId: pod.contractId, type: pod.type, address: depAddr, status: 'ok' });
@@ -247,6 +252,10 @@ module.exports = async function rollback({ rootDir, args = {} }) {
             console.log(`   Use "fsca cluster link" to manually restore failed pod edges.`);
         } else {
             console.log(`\n✓ Rollback complete: contractId=${contractId} → generation=${normalized.generation} at ${targetAddr}`);
+        }
+
+        } finally {
+            lock.release();
         }
 
     } catch (error) {

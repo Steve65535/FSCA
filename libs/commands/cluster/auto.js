@@ -22,6 +22,8 @@ const { loadProjectConfig, saveProjectConfig, loadArtifact } = require('./auto/u
 const { resolveCleanupMode, performCleanup, findSourceFile, findArtifactFile } = require('../cleanup');
 const { confirm } = require('../confirm');
 const { nextDeploySeq, nextGeneration } = require('../version');
+const { sendTx } = require('../txExecutor');
+const { acquireLock } = require('../clusterLock');
 
 const getProvider = chainProvider.getProvider;
 const getSigner = walletSigner.getSigner;
@@ -148,8 +150,47 @@ module.exports = async function auto({ rootDir, args = {} }) {
         const clusterAddr = config.fsca.clusterAddress;
         const cluster = new ethers.Contract(clusterAddr, CLUSTER_ABI, signer);
 
-        // Track all addresses: fscaId → address
+        // Checkpoint helpers
+        const cpPath = path.join(rootDir, 'auto-checkpoint.json');
+        function writeCheckpoint(completedSteps, state) {
+            fs.writeFileSync(cpPath, JSON.stringify({
+                command: 'cluster-auto',
+                version: 1,
+                clusterAddress: clusterAddr,
+                startedAt: cpStartedAt,
+                completedSteps: [...completedSteps],
+                state,
+            }, null, 2), 'utf-8');
+        }
+        function deleteCheckpoint() {
+            if (fs.existsSync(cpPath)) fs.unlinkSync(cpPath);
+        }
+
+        // Resume / restart logic
+        let checkpoint = null;
+        if (fs.existsSync(cpPath)) {
+            try { checkpoint = JSON.parse(fs.readFileSync(cpPath, 'utf-8')); } catch { checkpoint = null; }
+            if (checkpoint && checkpoint.clusterAddress !== clusterAddr) checkpoint = null;
+        }
+        if (checkpoint && args.restart) {
+            deleteCheckpoint(); checkpoint = null;
+            console.log('  Restarting from scratch (--restart).');
+        } else if (checkpoint && !args.resume) {
+            const resume = await confirm('Found auto-checkpoint.json. Resume from last checkpoint?', false);
+            if (!resume) { deleteCheckpoint(); checkpoint = null; }
+        }
+        if (checkpoint) console.log(`  Resuming auto-assembly (${checkpoint.completedSteps.length} steps already done).`);
+
+        const completedSteps = new Set(checkpoint ? checkpoint.completedSteps : []);
+        const cpStartedAt = (checkpoint && checkpoint.startedAt) || new Date().toISOString();
+
+        // Track all addresses: fscaId → address (restore from checkpoint if resuming)
         const deployedAddrs = new Map();
+        if (checkpoint && checkpoint.state && checkpoint.state.deployedAddrs) {
+            for (const [k, v] of Object.entries(checkpoint.state.deployedAddrs)) {
+                deployedAddrs.set(Number(k), v);
+            }
+        }
         for (const item of plan) {
             if (item.state === 'mounted' && item.existingAddress) {
                 deployedAddrs.set(item.fscaId, item.existingAddress);
@@ -162,10 +203,21 @@ module.exports = async function auto({ rootDir, args = {} }) {
         // Pod-level cycle edge set (for afterMount)
         const podCycleEdgeSet = new Set(cycleEdges.map(e => `${e.from}->${e.to}`));
 
+        const lock = acquireLock(rootDir, clusterAddr, 'cluster auto');
+        try {
+
         // 4. Deploy all contracts first
         console.log('[4/6] Deploying contracts...');
         for (const item of plan) {
             if (!item.actions.includes('deploy')) continue;
+
+            const stepKey = `deploy:${item.contractName}`;
+            if (completedSteps.has(stepKey)) {
+                const addr = deployedAddrs.get(item.fscaId);
+                console.log(`  ↩ skip ${stepKey}: ${addr}`);
+                item.existingAddress = addr;
+                continue;
+            }
 
             console.log(`  → [id=${item.fscaId}] ${item.contractName}`);
             const artifact = loadArtifact(rootDir, item.contractName);
@@ -178,7 +230,7 @@ module.exports = async function auto({ rootDir, args = {} }) {
             console.log(`    Deployed: ${contractAddr}`);
 
             deployedAddrs.set(item.fscaId, contractAddr);
-            item.existingAddress = contractAddr; // update plan in-place for link/mount phases
+            item.existingAddress = contractAddr;
 
             const timestamp = Math.floor(Date.now() / 1000);
             if (!config.fsca.alldeployedcontracts) config.fsca.alldeployedcontracts = [];
@@ -197,6 +249,8 @@ module.exports = async function auto({ rootDir, args = {} }) {
             };
             config.fsca.alldeployedcontracts.push(entry);
             config.fsca.unmountedcontracts.push(entry);
+            completedSteps.add(stepKey);
+            writeCheckpoint(completedSteps, { deployedAddrs: Object.fromEntries(deployedAddrs) });
             saveProjectConfig(rootDir, config);
         }
 
@@ -231,30 +285,36 @@ module.exports = async function auto({ rootDir, args = {} }) {
             if (!contractAddr) { console.warn(`  ⚠  No address for id=${item.fscaId}, skipping link`); continue; }
 
             for (const depId of item.activePods) {
-                const edgeKey = `${depId}->${item.fscaId}`;
-                if (podCycleEdgeSet.has(edgeKey)) continue; // handled afterMount
-                if (funcCycleEdgeSet.has(edgeKey)) {
+                const edgeKey = `link:active:${depId}->${item.fscaId}`;
+                if (podCycleEdgeSet.has(`${depId}->${item.fscaId}`)) continue;
+                if (funcCycleEdgeSet.has(`${depId}->${item.fscaId}`)) {
                     console.log(`    Skipped active  id=${depId} → id=${item.fscaId} (function cycle)`);
                     report.skippedLinks.push({ type: 'active', from: depId, to: item.fscaId, reason: 'func-cycle' });
                     continue;
                 }
                 const targetAddr = deployedAddrs.get(depId);
                 if (!targetAddr) { console.warn(`    ⚠  active dep id=${depId} not found, skipping`); continue; }
-                await (await cluster.addActivePodBeforeMount(contractAddr, targetAddr, depId)).wait();
+                if (completedSteps.has(edgeKey)) { console.log(`  ↩ skip ${edgeKey}`); continue; }
+                await sendTx(() => cluster.addActivePodBeforeMount(contractAddr, targetAddr, depId), { label: edgeKey });
                 console.log(`    Linked active  id=${depId} → id=${item.fscaId}`);
+                completedSteps.add(edgeKey);
+                writeCheckpoint(completedSteps, { deployedAddrs: Object.fromEntries(deployedAddrs) });
             }
             for (const depId of item.passivePods) {
-                const edgeKey = `${depId}->${item.fscaId}`;
-                if (podCycleEdgeSet.has(edgeKey)) continue;
-                if (funcCycleEdgeSet.has(edgeKey)) {
+                const edgeKey = `link:passive:${depId}->${item.fscaId}`;
+                if (podCycleEdgeSet.has(`${depId}->${item.fscaId}`)) continue;
+                if (funcCycleEdgeSet.has(`${depId}->${item.fscaId}`)) {
                     console.log(`    Skipped passive id=${depId} → id=${item.fscaId} (function cycle)`);
                     report.skippedLinks.push({ type: 'passive', from: depId, to: item.fscaId, reason: 'func-cycle' });
                     continue;
                 }
                 const targetAddr = deployedAddrs.get(depId);
                 if (!targetAddr) { console.warn(`    ⚠  passive dep id=${depId} not found, skipping`); continue; }
-                await (await cluster.addPassivePodBeforeMount(contractAddr, targetAddr, depId)).wait();
+                if (completedSteps.has(edgeKey)) { console.log(`  ↩ skip ${edgeKey}`); continue; }
+                await sendTx(() => cluster.addPassivePodBeforeMount(contractAddr, targetAddr, depId), { label: edgeKey });
                 console.log(`    Linked passive id=${depId} → id=${item.fscaId}`);
+                completedSteps.add(edgeKey);
+                writeCheckpoint(completedSteps, { deployedAddrs: Object.fromEntries(deployedAddrs) });
             }
         }
 
@@ -265,7 +325,14 @@ module.exports = async function auto({ rootDir, args = {} }) {
             const contractAddr = deployedAddrs.get(item.fscaId);
             if (!contractAddr) { console.warn(`  ⚠  No address for id=${item.fscaId}, skipping mount`); continue; }
 
-            await (await cluster.registerContract(item.fscaId, item.contractName, contractAddr)).wait();
+            const mountKey = `mount:${item.fscaId}`;
+            if (!completedSteps.has(mountKey)) {
+                await sendTx(() => cluster.registerContract(item.fscaId, item.contractName, contractAddr), { label: mountKey });
+                completedSteps.add(mountKey);
+                writeCheckpoint(completedSteps, { deployedAddrs: Object.fromEntries(deployedAddrs) });
+            } else {
+                console.log(`  ↩ skip ${mountKey}`);
+            }
             console.log(`  → Mounted [id=${item.fscaId}] ${item.contractName} at ${contractAddr}`);
 
             const timestamp = Math.floor(Date.now() / 1000);
@@ -291,7 +358,6 @@ module.exports = async function auto({ rootDir, args = {} }) {
 
         // AfterMount: pod-level cycle edges only (skip func-cycle edges)
         const afterMountEdges = cycleEdges.filter(e => !funcCycleEdgeSet.has(`${e.from}->${e.to}`));
-        // Count func-cycle edges that were filtered out of afterMount
         for (const edge of cycleEdges) {
             if (funcCycleEdgeSet.has(`${edge.from}->${edge.to}`)) {
                 report.skippedLinks.push({ type: edge.type, from: edge.from, to: edge.to, reason: 'func-cycle' });
@@ -306,12 +372,16 @@ module.exports = async function auto({ rootDir, args = {} }) {
                     console.warn(`  ⚠  Cannot link cycle edge ${edge.from}->${edge.to}: address not found`);
                     continue;
                 }
+                const amKey = `afterMount:${edge.type}:${edge.from}->${edge.to}`;
+                if (completedSteps.has(amKey)) { console.log(`  ↩ skip ${amKey}`); continue; }
                 if (edge.type === 'active') {
-                    await (await cluster.addActivePodAfterMount(toAddr, fromAddr, edge.from)).wait();
+                    await sendTx(() => cluster.addActivePodAfterMount(toAddr, fromAddr, edge.from), { label: amKey });
                 } else {
-                    await (await cluster.addPassivePodAfterMount(toAddr, fromAddr, edge.from)).wait();
+                    await sendTx(() => cluster.addPassivePodAfterMount(toAddr, fromAddr, edge.from), { label: amKey });
                 }
                 console.log(`    Cycle link [${edge.type}] id=${edge.from} → id=${edge.to}`);
+                completedSteps.add(amKey);
+                writeCheckpoint(completedSteps, { deployedAddrs: Object.fromEntries(deployedAddrs) });
             }
         }
 
@@ -329,7 +399,12 @@ module.exports = async function auto({ rootDir, args = {} }) {
             console.log(`\n  Report written to auto-report.json`);
         }
 
+        deleteCheckpoint();
         console.log(`\n✓ Auto assembly complete: ${report.assembled.length} mounted, ${report.skipped.length} skipped, ${report.skippedLinks.length} link(s) skipped (func-cycle).`);
+
+        } finally {
+            lock.release();
+        }
 
     } catch (error) {
         console.error('\nAuto assembly failed:', error.message);

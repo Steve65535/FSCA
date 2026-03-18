@@ -11,6 +11,8 @@ const { ethers } = require('ethers');
 
 const chainProvider = require('../../../chain/provider');
 const walletSigner = require('../../../wallet/signer');
+const { sendTx } = require('../txExecutor');
+const { acquireLock } = require('../clusterLock');
 
 const getProvider = chainProvider.getProvider;
 const getSigner = walletSigner.getSigner;
@@ -96,51 +98,45 @@ module.exports = async function link({ rootDir, args = {} }) {
         const clusterAbi = loadClusterManagerABI(rootDir);
         const clusterContract = new ethers.Contract(clusterAddr, clusterAbi, signer);
 
-        let tx;
+        const lock = acquireLock(rootDir, clusterAddr, 'cluster link');
+        try {
+
+        const label = `${isMounted == 0 ? 'BeforeMount' : 'AfterMount'}:${displayType}:${tId}`;
+        let receipt;
         if (isMounted == 0) {
-            // Before Mount
             if (type === 'positive') {
-                tx = await clusterContract.addActivePodBeforeMount(currentOperating, targetAddress, tId);
+                receipt = await sendTx(() => clusterContract.addActivePodBeforeMount(currentOperating, targetAddress, tId), { label });
             } else {
-                tx = await clusterContract.addPassivePodBeforeMount(currentOperating, targetAddress, tId);
+                receipt = await sendTx(() => clusterContract.addPassivePodBeforeMount(currentOperating, targetAddress, tId), { label });
             }
         } else {
-            // After Mount
             if (type === 'positive') {
-                tx = await clusterContract.addActivePodAfterMount(currentOperating, targetAddress, tId);
+                receipt = await sendTx(() => clusterContract.addActivePodAfterMount(currentOperating, targetAddress, tId), { label });
             } else {
-                tx = await clusterContract.addPassivePodAfterMount(currentOperating, targetAddress, tId);
+                receipt = await sendTx(() => clusterContract.addPassivePodAfterMount(currentOperating, targetAddress, tId), { label });
             }
         }
 
-        console.log(`Transaction sent: ${tx.hash}`);
-        console.log(`Waiting for confirmation...`);
-
-        const receipt = await tx.wait();
         console.log(`✓ Transaction confirmed in block ${receipt.blockNumber}`);
 
         // Attempt parse logs
         try {
-            let iface;
-            if (ethers.Interface) {
-                iface = new ethers.Interface(templateAbi);
-            } else if (ethers.utils && ethers.utils.Interface) {
-                iface = new ethers.utils.Interface(templateAbi);
-            }
-
-            if (iface) {
-                for (const log of receipt.logs) {
-                    try {
-                        const parsed = iface.parseLog(log);
-                        if (parsed && parsed.name === 'ModuleChanged') {
-                            console.log(`  Event: ModuleChanged`);
-                            console.log(`    Action: ${parsed.args[3]}`);
-                            console.log(`    Module: ${parsed.args[2]}`);
-                        }
-                    } catch (e) { }
-                }
+            const iface = new ethers.Interface(templateAbi);
+            for (const log of receipt.logs) {
+                try {
+                    const parsed = iface.parseLog(log);
+                    if (parsed && parsed.name === 'ModuleChanged') {
+                        console.log(`  Event: ModuleChanged`);
+                        console.log(`    Action: ${parsed.args[3]}`);
+                        console.log(`    Module: ${parsed.args[2]}`);
+                    }
+                } catch (e) { }
             }
         } catch (e) { }
+
+        } finally {
+            lock.release();
+        }
 
     } catch (error) {
         console.error('Failed to link:', error.message);

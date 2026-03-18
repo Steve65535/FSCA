@@ -14,6 +14,8 @@ const { ethers } = require('ethers');
 const chainProvider = require('../../../chain/provider');
 const walletSigner = require('../../../wallet/signer');
 const { nextGeneration, nextDeploySeq, normalizeRecord } = require('../version');
+const { sendTx } = require('../txExecutor');
+const { acquireLock } = require('../clusterLock');
 
 const getProvider = chainProvider.getProvider;
 const getSigner = walletSigner.getSigner;
@@ -84,13 +86,12 @@ module.exports = async function mount({ rootDir, args = {} }) {
         const abi = loadClusterManagerABI(rootDir);
         const cluster = new ethers.Contract(clusterAddr, abi, signer);
 
-        // 4. Send Transaction
-        // function registerContract(uint32 id, string memory name, address contractAddr)
-        const tx = await cluster.registerContract(id, name, currentOperating);
-        console.log(`Transaction sent: ${tx.hash}`);
+        const lock = acquireLock(rootDir, clusterAddr, 'cluster mount');
+        try {
 
-        await tx.wait();
-        console.log(`✓ Contract mounted successfully.`);
+        // 4. Send Transaction
+        const receipt = await sendTx(() => cluster.registerContract(id, name, currentOperating), { label: `registerContract #${id}` });
+        console.log(`✓ Contract mounted successfully. Block: ${receipt.blockNumber}`);
 
         // 5. Update Cache
         const timestamp = Math.floor(Date.now() / 1000);
@@ -99,30 +100,23 @@ module.exports = async function mount({ rootDir, args = {} }) {
             address: currentOperating,
             contractId: id,
             timeStamp: timestamp,
-            mountTx: tx.hash
+            mountTx: receipt.hash || receipt.transactionHash,
         };
 
-        // Initialize arrays if missing
         if (!config.fsca.alldeployedcontracts) config.fsca.alldeployedcontracts = [];
         if (!config.fsca.runningcontracts) config.fsca.runningcontracts = [];
         if (!config.fsca.unmountedcontracts) config.fsca.unmountedcontracts = [];
 
-        // Remove from unmountedcontracts (filter by address)
         const initialUnmountedCount = config.fsca.unmountedcontracts.length;
         config.fsca.unmountedcontracts = config.fsca.unmountedcontracts.filter(c => c.address.toLowerCase() !== currentOperating.toLowerCase());
 
-        // Add to runningcontracts
-        // Check if already exists to avoid duplicates
         const existIndex = config.fsca.runningcontracts.findIndex(c => c.contractId == id);
         if (existIndex >= 0) {
-            config.fsca.runningcontracts[existIndex] = contractData; // upate
+            config.fsca.runningcontracts[existIndex] = contractData;
         } else {
             config.fsca.runningcontracts.push(contractData);
         }
 
-        // Also update alldeployedcontracts with ID info, generation, status
-        // Only assign a new generation if this address doesn't already have one
-        // (prevents generation inflation on repeated mount/unmount of the same address)
         const recordInAll = config.fsca.alldeployedcontracts.find(
             c => c.address && c.address.toLowerCase() === currentOperating.toLowerCase()
         );
@@ -147,7 +141,6 @@ module.exports = async function mount({ rootDir, args = {} }) {
             }
             return c;
         });
-        // If not found in alldeployedcontracts, add it
         if (!foundInAll) {
             config.fsca.alldeployedcontracts.push({
                 name,
@@ -163,6 +156,10 @@ module.exports = async function mount({ rootDir, args = {} }) {
 
         saveProjectConfig(rootDir, config);
         console.log(`✓ Cache updated: Moved from Unmounted (${initialUnmountedCount} -> ${config.fsca.unmountedcontracts.length}) to Running.`);
+
+        } finally {
+            lock.release();
+        }
 
     } catch (error) {
         console.error('Failed to mount:', error.message);

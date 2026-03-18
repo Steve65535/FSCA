@@ -10,6 +10,8 @@ const { ethers } = require('ethers');
 
 const chainProvider = require('../../../chain/provider');
 const walletSigner = require('../../../wallet/signer');
+const { sendTx } = require('../txExecutor');
+const { acquireLock } = require('../clusterLock');
 
 const getProvider = chainProvider.getProvider;
 const getSigner = walletSigner.getSigner;
@@ -100,50 +102,44 @@ module.exports = async function unlink({ rootDir, args = {} }) {
         const clusterAbi = loadClusterManagerABI(rootDir);
         const clusterContract = new ethers.Contract(clusterAddr, clusterAbi, signer);
 
-        let tx;
+        const lock = acquireLock(rootDir, clusterAddr, 'cluster unlink');
+        try {
+
+        const label = `${isMounted == 1 ? 'AfterMount' : 'BeforeMount'}:remove:${displayType}:${tId}`;
+        let receipt;
         if (isMounted == 1) {
-            // After Mount
             if (type === 'positive') {
-                tx = await clusterContract.removeActivePodAfterMount(currentOperating, targetAddress, tId);
+                receipt = await sendTx(() => clusterContract.removeActivePodAfterMount(currentOperating, targetAddress, tId), { label });
             } else {
-                tx = await clusterContract.removePassivePodAfterMount(currentOperating, targetAddress, tId);
+                receipt = await sendTx(() => clusterContract.removePassivePodAfterMount(currentOperating, targetAddress, tId), { label });
             }
         } else {
-            // Before Mount
             if (type === 'positive') {
-                tx = await clusterContract.removeActivePodBeforeMount(currentOperating, targetAddress, tId);
+                receipt = await sendTx(() => clusterContract.removeActivePodBeforeMount(currentOperating, targetAddress, tId), { label });
             } else {
-                tx = await clusterContract.removePassivePodBeforeMount(currentOperating, targetAddress, tId);
+                receipt = await sendTx(() => clusterContract.removePassivePodBeforeMount(currentOperating, targetAddress, tId), { label });
             }
         }
 
-        console.log(`Transaction sent: ${tx.hash}`);
-        console.log(`Waiting for confirmation...`);
-
-        const receipt = await tx.wait();
         console.log(`✓ Transaction confirmed in block ${receipt.blockNumber}`);
 
         // Attempt parse logs
         try {
-            let iface;
-            if (ethers.Interface) {
-                iface = new ethers.Interface(templateAbi);
-            } else if (ethers.utils && ethers.utils.Interface) {
-                iface = new ethers.utils.Interface(templateAbi);
-            }
-
-            if (iface) {
-                for (const log of receipt.logs) {
-                    try {
-                        const parsed = iface.parseLog(log);
-                        if (parsed && parsed.name === 'ModuleChanged') {
-                            console.log(`  Event: ModuleChanged`);
-                            console.log(`    Action: ${parsed.args[3]}`);
-                        }
-                    } catch (e) { }
-                }
+            const iface = new ethers.Interface(templateAbi);
+            for (const log of receipt.logs) {
+                try {
+                    const parsed = iface.parseLog(log);
+                    if (parsed && parsed.name === 'ModuleChanged') {
+                        console.log(`  Event: ModuleChanged`);
+                        console.log(`    Action: ${parsed.args[3]}`);
+                    }
+                } catch (e) { }
             }
         } catch (e) { }
+
+        } finally {
+            lock.release();
+        }
 
     } catch (error) {
         console.error('Failed to unlink:', error.message);
