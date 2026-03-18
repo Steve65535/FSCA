@@ -18,7 +18,7 @@ For architecture/process best practices, use:
 |---|---|---|
 | `fsca help` | `fsca help` | Show command help. |
 | `fsca init` | `fsca init [--networkName <name>] [--rpc <url>] [--chainId <id>] [--blockConfirmations <num>] [--accountPrivateKey <key>] [--address <addr>]` | Initialize an FSCA project. |
-| `fsca deploy` | `fsca deploy --contract <ContractName> [--description <name>]` | Deploy a business contract inheriting `normalTemplate`. |
+| `fsca deploy` | `fsca deploy --contract <ContractName> [--description <name>] [--cleanup <keep\|soft\|hard>] [--yes]` | Deploy a business contract inheriting `normalTemplate`. |
 
 ## Wallet Commands
 | Command | Usage | Description |
@@ -37,7 +37,7 @@ For architecture/process best practices, use:
 ## Cluster Commands
 | Command | Usage | Description |
 |---|---|---|
-| `fsca cluster init` | `fsca cluster init [--threshold <num>]` | Deploy core cluster contracts. |
+| `fsca cluster init` | `fsca cluster init [--threshold <num>] [--cleanup <keep\|soft\|hard>] [--yes]` | Deploy core cluster contracts. |
 | `fsca cluster graph` | `fsca cluster graph` | Generate Mermaid topology graph. |
 | `fsca cluster list mounted` | `fsca cluster list mounted` | List mounted contracts. |
 | `fsca cluster list all` | `fsca cluster list all` | List all contracts including historical records. |
@@ -48,9 +48,11 @@ For architecture/process best practices, use:
 | `fsca cluster unlink` | `fsca cluster unlink <type> <targetAddress> <targetId>` | Remove dependency link. |
 | `fsca cluster mount` | `fsca cluster mount <id> <name>` | Mount current contract into cluster. |
 | `fsca cluster unmount` | `fsca cluster unmount <id>` | Unmount contract from cluster. |
-| `fsca cluster upgrade` | `fsca cluster upgrade --id <id> --contract <ContractName> [--skip-copy-pods]` | Hot-swap a mounted contract. |
-| `fsca cluster auto` | `fsca cluster auto [--dry-run]` | Auto deploy/link/mount from annotations. |
+| `fsca cluster upgrade` | `fsca cluster upgrade --id <id> --contract <ContractName> [--skip-copy-pods] [--cleanup <keep\|soft\|hard>] [--yes]` | Hot-swap a mounted contract. |
+| `fsca cluster auto` | `fsca cluster auto [--dry-run] [--cleanup <keep\|soft\|hard>] [--yes]` | Auto deploy/link/mount from annotations. |
 | `fsca cluster check` | `fsca cluster check` | Static check for IDs/cycles (no on-chain writes). |
+| `fsca cluster rollback` | `fsca cluster rollback --id <contractId> [--generation <n>] [--dry-run] [--yes]` | Roll back to a deprecated historical version. |
+| `fsca cluster history` | `fsca cluster history --id <contractId>` | Show version history for one contract ID. |
 | `fsca cluster operator list` | `fsca cluster operator list` | List operators. |
 | `fsca cluster operator add` | `fsca cluster operator add <address>` | Add operator. |
 | `fsca cluster operator remove` | `fsca cluster operator remove <address>` | Remove operator. |

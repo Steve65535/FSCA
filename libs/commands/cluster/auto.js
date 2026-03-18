@@ -19,6 +19,9 @@ const chainDeploy = require('../../../chain/deploy');
 const analyze = require('./auto/analyze');
 const reconcile = require('./auto/reconciler');
 const { loadProjectConfig, saveProjectConfig, loadArtifact } = require('./auto/utils');
+const { resolveCleanupMode, performCleanup, findSourceFile, findArtifactFile } = require('../cleanup');
+const { confirm } = require('../confirm');
+const { nextDeploySeq, nextGeneration } = require('../version');
 
 const getProvider = chainProvider.getProvider;
 const getSigner = walletSigner.getSigner;
@@ -124,6 +127,12 @@ module.exports = async function auto({ rootDir, args = {} }) {
             return;
         }
 
+        const ok = await confirm(`Proceed with auto-assembly? (${plan.filter(i => i.actions.length).length} contract(s) to process)`, !!args.yes);
+        if (!ok) {
+            console.log('Aborted.');
+            return;
+        }
+
         // 3. Compile
         console.log('[3/6] Compiling contracts...');
         try {
@@ -174,10 +183,44 @@ module.exports = async function auto({ rootDir, args = {} }) {
             const timestamp = Math.floor(Date.now() / 1000);
             if (!config.fsca.alldeployedcontracts) config.fsca.alldeployedcontracts = [];
             if (!config.fsca.unmountedcontracts) config.fsca.unmountedcontracts = [];
-            const entry = { name: item.contractName, address: contractAddr, contractId: null, timeStamp: timestamp, deployTx: null };
+            const deploySeq = nextDeploySeq(config.fsca.alldeployedcontracts);
+            const entry = {
+                name: item.contractName,
+                address: contractAddr,
+                contractId: null,
+                generation: null,
+                deploySeq,
+                status: 'deployed',
+                timeStamp: timestamp,
+                deployTx: null,
+                podSnapshot: { active: [], passive: [] },
+            };
             config.fsca.alldeployedcontracts.push(entry);
             config.fsca.unmountedcontracts.push(entry);
             saveProjectConfig(rootDir, config);
+        }
+
+        // 4b. Cleanup deployed source/artifacts
+        const cleanupMode = resolveCleanupMode(args, config);
+        if (cleanupMode !== 'keep') {
+            const deployedItems = plan.filter(item => item.actions.includes('deploy'));
+            const cleanupFiles = deployedItems.map(item => {
+                const contract = idToContract.get(item.fscaId);
+                return {
+                    contractName: item.contractName,
+                    sourcePath: contract ? contract.filePath : findSourceFile(rootDir, item.contractName),
+                    artifactPath: findArtifactFile(rootDir, item.contractName),
+                };
+            });
+            if (cleanupFiles.length > 0) {
+                const cleanupResult = performCleanup({ mode: cleanupMode, files: cleanupFiles, rootDir });
+                report.cleanup = { mode: cleanupMode, actions: cleanupResult.actions, errors: cleanupResult.errors };
+                for (const action of cleanupResult.actions) {
+                    if (action.status === 'ok') console.log(`  Cleanup [${cleanupMode}]: ${action.contractName} ${action.fileType} ${action.action}`);
+                    else if (action.status === 'skipped') console.log(`  Cleanup: ${action.contractName} ${action.fileType} skipped`);
+                    else console.warn(`  ⚠  Cleanup error (${action.contractName} ${action.fileType}): ${action.error}`);
+                }
+            }
         }
 
         // 5. Link all contracts (beforeMount), skipping pod-cycle edges and func-cycle edges
@@ -234,8 +277,11 @@ module.exports = async function auto({ rootDir, args = {} }) {
             const existIdx = config.fsca.runningcontracts.findIndex(c => Number(c.contractId) === item.fscaId);
             if (existIdx >= 0) config.fsca.runningcontracts[existIdx] = runEntry;
             else config.fsca.runningcontracts.push(runEntry);
+            const newGen = nextGeneration(config.fsca.alldeployedcontracts, item.fscaId);
             config.fsca.alldeployedcontracts = (config.fsca.alldeployedcontracts || []).map(c =>
-                c.address.toLowerCase() === contractAddr.toLowerCase() ? { ...c, contractId: item.fscaId } : c
+                c.address.toLowerCase() === contractAddr.toLowerCase()
+                    ? { ...c, contractId: item.fscaId, generation: newGen, status: 'mounted' }
+                    : c
             );
             config.fsca.currentOperating = contractAddr;
             saveProjectConfig(rootDir, config);

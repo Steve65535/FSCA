@@ -258,15 +258,17 @@ No address spoofing. No unauthorized access. No exceptions.
 | Command | Description |
 |---------|-------------|
 | `fsca init` | Scaffold project + Hardhat + config |
-| `fsca deploy --contract <Name>` | Compile & deploy a NormalTemplate contract |
-| `fsca cluster init` | Deploy the orchestration backbone |
+| `fsca deploy --contract <Name> [--cleanup <keep\|soft\|hard>] [--yes]` | Compile & deploy a NormalTemplate contract |
+| `fsca cluster init [--cleanup <keep\|soft\|hard>] [--yes]` | Deploy the orchestration backbone |
 | `fsca cluster mount <id> <name>` | Register a contract into the cluster |
 | `fsca cluster unmount <id>` | Deregister a contract |
-| `fsca cluster upgrade --id <id> --contract <Name>` | Hot-swap a contract version |
+| `fsca cluster upgrade --id <id> --contract <Name> [--cleanup <keep\|soft\|hard>] [--yes]` | Hot-swap a contract version |
 | `fsca cluster link <type> <addr> <id>` | Create active/passive dependency |
 | `fsca cluster unlink <type> <addr> <id>` | Remove a dependency |
 | `fsca cluster auto check` | Static analysis: ID conflicts, pod cycles, function call cycles |
-| `fsca cluster auto [--dry-run]` | Declarative auto-assembly: deploy + link + mount |
+| `fsca cluster auto [--dry-run] [--cleanup <keep\|soft\|hard>] [--yes]` | Declarative auto-assembly: deploy + link + mount |
+| `fsca cluster rollback --id <contractId> [--generation <n>] [--dry-run] [--yes]` | Roll back to a deprecated historical version |
+| `fsca cluster history --id <contractId>` | Inspect version history for one contract ID |
 | `fsca cluster graph` | Generate Mermaid topology diagram |
 | `fsca cluster list mounted` | List all mounted contracts |
 | `fsca cluster info <id>` | Inspect a contract's metadata |

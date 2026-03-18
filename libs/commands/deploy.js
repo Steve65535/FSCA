@@ -56,6 +56,9 @@ function loadArtifact(rootDir, contractName) {
     throw new Error(`Artifact not found for "${contractName}". Run "npx hardhat compile" first.`);
 }
 
+const { confirm } = require('./confirm');
+const { nextDeploySeq } = require('./version');
+
 module.exports = async function deploy({ rootDir, args = {} }) {
     try {
         const contractName = args.contract;
@@ -66,6 +69,12 @@ module.exports = async function deploy({ rootDir, args = {} }) {
         }
 
         console.log(`Preparing to deploy contract: ${contractName} (name: ${description})`);
+
+        const ok = await confirm(`Deploy contract "${contractName}"?`, !!args.yes);
+        if (!ok) {
+            console.log('Aborted.');
+            return;
+        }
 
         // 1. Compile
         console.log("Compiling contracts...");
@@ -118,17 +127,51 @@ module.exports = async function deploy({ rootDir, args = {} }) {
             network: config.network.name
         });
 
+        // 5b. Cleanup undeployed source/artifacts
+        const { resolveCleanupMode, performCleanup, findSourceFile, findArtifactFile } = require('./cleanup');
+        const cleanupMode = resolveCleanupMode(args, config);
+        if (cleanupMode !== 'keep') {
+            const sourcePath = findSourceFile(rootDir, contractName);
+            const artifactPath = findArtifactFile(rootDir, contractName);
+            const cleanupResult = performCleanup({
+                mode: cleanupMode,
+                files: [{ sourcePath, artifactPath, contractName }],
+                rootDir,
+            });
+            for (const action of cleanupResult.actions) {
+                if (action.status === 'ok') console.log(`✓ Cleanup [${cleanupMode}]: ${action.fileType} ${action.action}`);
+                else if (action.status === 'skipped') console.log(`  Cleanup: ${action.fileType} already absent, skipped`);
+                else console.warn(`⚠  Cleanup error (${action.fileType}): ${action.error}`);
+            }
+            if (cleanupResult.errors.length > 0) {
+                console.warn(`⚠  Cleanup completed with ${cleanupResult.errors.length} error(s)`);
+            }
+            // Write cleanup-report.json
+            const reportPath = require('path').join(rootDir, 'cleanup-report.json');
+            require('fs').writeFileSync(reportPath, JSON.stringify({
+                timestamp: new Date().toISOString(),
+                mode: cleanupMode,
+                actions: cleanupResult.actions,
+                errors: cleanupResult.errors,
+            }, null, 2), 'utf-8');
+        }
+
         // 6. Update Cache
+        if (!config.fsca.alldeployedcontracts) config.fsca.alldeployedcontracts = [];
+        if (!config.fsca.unmountedcontracts) config.fsca.unmountedcontracts = [];
+
+        const deploySeq = nextDeploySeq(config.fsca.alldeployedcontracts);
         const contractData = {
             name: description,
             address: deployedAddress,
             contractId: null, // Not registered yet
+            generation: null,
+            deploySeq,
+            status: 'deployed',
             timeStamp: timestamp,
-            deployTx: contract.deploymentTransaction().hash
+            deployTx: contract.deploymentTransaction().hash,
+            podSnapshot: { active: [], passive: [] },
         };
-
-        if (!config.fsca.alldeployedcontracts) config.fsca.alldeployedcontracts = [];
-        if (!config.fsca.unmountedcontracts) config.fsca.unmountedcontracts = [];
 
         config.fsca.alldeployedcontracts.push(contractData);
         config.fsca.unmountedcontracts.push(contractData);

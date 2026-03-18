@@ -9,7 +9,7 @@
     "deploy": {
       "description": "部署继承自 NormalTemplate 的业务合约",
       "handler": "./libs/commands/deploy",
-      "usage": "fsca deploy --contract <ContractName> [--description <name>]",
+      "usage": "fsca deploy --contract <ContractName> [--description <name>] [--cleanup <keep|soft|hard>] [--yes]",
       "params": {
         "contract": {
           "type": "string",
@@ -20,6 +20,16 @@
           "type": "string",
           "required": false,
           "description": "合约注册名，不填则与 --contract 相同"
+        },
+        "cleanup": {
+          "type": "string",
+          "required": false,
+          "description": "清理策略: keep(默认) | soft(归档) | hard(删除源码+产物)"
+        },
+        "yes": {
+          "type": "boolean",
+          "required": false,
+          "description": "跳过交互确认"
         }
       }
     },
@@ -199,12 +209,22 @@
         "init": {
           "description": "部署 FSCA 集群",
           "handler": "./libs/commands/cluster/init",
-          "usage": "fsca cluster init [--threshold <num>]",
+          "usage": "fsca cluster init [--threshold <num>] [--cleanup <keep|soft|hard>] [--yes]",
           "params": {
             "threshold": {
               "type": "number",
               "required": false,
               "description": "多签钱包所需确认数（默认：1）"
+            },
+            "cleanup": {
+              "type": "string",
+              "required": false,
+              "description": "清理策略: keep(默认) | soft(归档) | hard(删除源码+产物)"
+            },
+            "yes": {
+              "type": "boolean",
+              "required": false,
+              "description": "跳过交互确认"
             }
           }
         },
@@ -367,7 +387,7 @@
         "upgrade": {
           "description": "热替换集群中的合约 (下架旧合约, 部署并上线新合约)",
           "handler": "./libs/commands/cluster/upgrade",
-          "usage": "fsca cluster upgrade --id <id> --contract <ContractName> [--skip-copy-pods]",
+          "usage": "fsca cluster upgrade --id <id> --contract <ContractName> [--skip-copy-pods] [--cleanup <keep|soft|hard>] [--yes]",
           "params": {
             "id": {
               "type": "number",
@@ -383,18 +403,38 @@
               "type": "boolean",
               "required": false,
               "description": "跳过 pod 配置复制，适用于新合约依赖关系已变更的情况"
+            },
+            "cleanup": {
+              "type": "string",
+              "required": false,
+              "description": "清理策略: keep(默认) | soft(归档) | hard(删除源码+产物)"
+            },
+            "yes": {
+              "type": "boolean",
+              "required": false,
+              "description": "跳过交互确认"
             }
           }
         },
         "auto": {
           "description": "自动装配集群合约 (扫描源码注解, 解析依赖, 自动部署/链接/挂载)",
           "handler": "./libs/commands/cluster/auto",
-          "usage": "fsca cluster auto [--dry-run]",
+          "usage": "fsca cluster auto [--dry-run] [--cleanup <keep|soft|hard>] [--yes]",
           "params": {
             "dry-run": {
               "type": "boolean",
               "required": false,
               "description": "预览模式，不执行任何链上操作"
+            },
+            "cleanup": {
+              "type": "string",
+              "required": false,
+              "description": "清理策略: keep(默认) | soft(归档) | hard(删除源码+产物)"
+            },
+            "yes": {
+              "type": "boolean",
+              "required": false,
+              "description": "跳过交互确认"
             }
           }
         },
@@ -402,6 +442,45 @@
           "description": "静态检查集群注解 (ID 冲突 / pod 环 / 函数调用环，不执行链上操作)",
           "handler": "./libs/commands/cluster/check",
           "usage": "fsca cluster check"
+        },
+        "rollback": {
+          "description": "回滚合约到指定历史版本",
+          "handler": "./libs/commands/cluster/rollback",
+          "usage": "fsca cluster rollback --id <contractId> [--generation <n>] [--dry-run] [--yes]",
+          "params": {
+            "id": {
+              "type": "number",
+              "required": true,
+              "description": "合约 ID"
+            },
+            "generation": {
+              "type": "number",
+              "required": false,
+              "description": "目标版本号（不填则回滚到上一个版本）"
+            },
+            "dry-run": {
+              "type": "boolean",
+              "required": false,
+              "description": "预览模式，不执行链上操作"
+            },
+            "yes": {
+              "type": "boolean",
+              "required": false,
+              "description": "跳过交互确认"
+            }
+          }
+        },
+        "history": {
+          "description": "查看合约版本历史",
+          "handler": "./libs/commands/cluster/history",
+          "usage": "fsca cluster history --id <contractId>",
+          "params": {
+            "id": {
+              "type": "number",
+              "required": true,
+              "description": "合约 ID"
+            }
+          }
         }
       }
     },

@@ -21,6 +21,10 @@ const chainProvider = require('../../../chain/provider');
 const walletSigner = require('../../../wallet/signer');
 const chainDeploy = require('../../../chain/deploy');
 const credentials = require('../../../wallet/credentials');
+const { resolveCleanupMode, performCleanup, findSourceFile, findArtifactFile } = require('../cleanup');
+const { confirm } = require('../confirm');
+const analyze = require('./auto/analyze');
+const { nextGeneration, nextDeploySeq } = require('../version');
 
 const getProvider = chainProvider.getProvider;
 const getSigner = walletSigner.getSigner;
@@ -95,6 +99,25 @@ module.exports = async function upgrade({ rootDir, args = {} }) {
 
         if (!id) throw new Error('--id required: contract ID in cluster registry');
         if (!contractName) throw new Error('--contract required: new contract artifact name');
+
+        // Pre-flight: static analysis
+        console.log('[0/6] Running pre-flight checks...');
+        const { errors: preflightErrors, warnings: preflightWarnings, funcCycles } = analyze(rootDir);
+        for (const w of preflightWarnings) console.warn(`  ⚠  ${w}`);
+        if (funcCycles.length > 0) {
+            console.warn(`  ⚠  ${funcCycles.length} function-level cycle(s) detected — review before upgrading.`);
+        }
+        if (preflightErrors.length > 0) {
+            console.error(`\n✗ Pre-flight failed: ${preflightErrors.length} annotation error(s). Fix them before upgrading.`);
+            process.exit(1);
+        }
+        console.log('      Pre-flight passed.');
+
+        const ok = await confirm(`Hot-swap contract #${id} with "${contractName}"? This will unmount the old contract and mount the new one.`, !!args.yes);
+        if (!ok) {
+            console.log('Aborted.');
+            return;
+        }
 
         const config = loadProjectConfig(rootDir);
         const contractId = Number(id);
@@ -171,20 +194,76 @@ module.exports = async function upgrade({ rootDir, args = {} }) {
         // 更新 project.json
         const timestamp = Math.floor(Date.now() / 1000);
         if (!config.fsca.alldeployedcontracts) config.fsca.alldeployedcontracts = [];
+
+        // Build podSnapshot (contractId only, no addresses) from old contract's pods
+        const podSnapshot = {
+            active: activeModules.map(m => ({ contractId: Number(m.contractId) })),
+            passive: passiveModules.map(m => ({ contractId: Number(m.contractId) })),
+        };
+
+        // Mark old record as deprecated, save its podSnapshot for rollback
+        config.fsca.alldeployedcontracts = config.fsca.alldeployedcontracts.map(r => {
+            if (r.address && r.address.toLowerCase() === oldAddr.toLowerCase()) {
+                return { ...r, status: 'deprecated', podSnapshot };
+            }
+            return r;
+        });
+
+        // New record with generation + status
+        const newGen = nextGeneration(config.fsca.alldeployedcontracts, contractId);
+        const newSeq = nextDeploySeq(config.fsca.alldeployedcontracts);
         config.fsca.alldeployedcontracts.push({
             name: registeredName,
             address: newAddr,
             contractId,
+            generation: newGen,
+            deploySeq: newSeq,
+            status: 'mounted',
             timeStamp: timestamp,
             upgradedFrom: oldAddr,
-            deployTx: null
+            deployTx: null,
+            podSnapshot: { active: [], passive: [] },
         });
+
         if (config.fsca.unmountedcontracts) {
             config.fsca.unmountedcontracts = config.fsca.unmountedcontracts.filter(c => c.address !== oldAddr);
         }
+        // Update runningcontracts
+        if (!config.fsca.runningcontracts) config.fsca.runningcontracts = [];
+        config.fsca.runningcontracts = config.fsca.runningcontracts.filter(
+            c => c.address && c.address.toLowerCase() !== oldAddr.toLowerCase()
+        );
+        config.fsca.runningcontracts.push({ name: registeredName, address: newAddr, contractId, timeStamp: timestamp });
+
         config.fsca.currentOperating = newAddr;
         saveProjectConfig(rootDir, config);
         console.log('      Updated project.json');
+
+        // Cleanup new contract's source/artifacts
+        const cleanupMode = resolveCleanupMode(args, config);
+        if (cleanupMode !== 'keep') {
+            const sourcePath = findSourceFile(rootDir, contractName);
+            const artifactPath = findArtifactFile(rootDir, contractName);
+            const cleanupResult = performCleanup({
+                mode: cleanupMode,
+                files: [{ sourcePath, artifactPath, contractName }],
+                rootDir,
+            });
+            for (const action of cleanupResult.actions) {
+                if (action.status === 'ok') console.log(`      Cleanup [${cleanupMode}]: ${action.fileType} ${action.action}`);
+                else if (action.status === 'skipped') console.log(`      Cleanup: ${action.fileType} skipped`);
+                else console.warn(`      ⚠  Cleanup error (${action.fileType}): ${action.error}`);
+            }
+            if (cleanupResult.errors.length > 0) {
+                const reportPath = require('path').join(rootDir, 'cleanup-report.json');
+                require('fs').writeFileSync(reportPath, JSON.stringify({
+                    timestamp: new Date().toISOString(),
+                    mode: cleanupMode,
+                    actions: cleanupResult.actions,
+                    errors: cleanupResult.errors,
+                }, null, 2), 'utf-8');
+            }
+        }
 
         console.log('');
         console.log(`✓ Hot swap complete: ${registeredName} #${contractId}`);

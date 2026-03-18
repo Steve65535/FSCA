@@ -18,7 +18,7 @@
 |---|---|---|
 | `fsca help` | `fsca help` | 显示帮助信息。 |
 | `fsca init` | `fsca init [--networkName <name>] [--rpc <url>] [--chainId <id>] [--blockConfirmations <num>] [--accountPrivateKey <key>] [--address <addr>]` | 初始化 FSCA 项目。 |
-| `fsca deploy` | `fsca deploy --contract <ContractName> [--description <name>]` | 部署继承 `normalTemplate` 的业务合约。 |
+| `fsca deploy` | `fsca deploy --contract <ContractName> [--description <name>] [--cleanup <keep\|soft\|hard>] [--yes]` | 部署继承 `normalTemplate` 的业务合约。 |
 
 ## Wallet 命令
 | 命令 | 用法 | 说明 |
@@ -37,7 +37,7 @@
 ## Cluster 命令
 | 命令 | 用法 | 说明 |
 |---|---|---|
-| `fsca cluster init` | `fsca cluster init [--threshold <num>]` | 部署集群核心合约。 |
+| `fsca cluster init` | `fsca cluster init [--threshold <num>] [--cleanup <keep\|soft\|hard>] [--yes]` | 部署集群核心合约。 |
 | `fsca cluster graph` | `fsca cluster graph` | 生成 Mermaid 拓扑图。 |
 | `fsca cluster list mounted` | `fsca cluster list mounted` | 列出已挂载合约。 |
 | `fsca cluster list all` | `fsca cluster list all` | 列出全部合约（含历史）。 |
@@ -48,9 +48,11 @@
 | `fsca cluster unlink` | `fsca cluster unlink <type> <targetAddress> <targetId>` | 解除依赖。 |
 | `fsca cluster mount` | `fsca cluster mount <id> <name>` | 将当前合约挂载进集群。 |
 | `fsca cluster unmount` | `fsca cluster unmount <id>` | 从集群卸载合约。 |
-| `fsca cluster upgrade` | `fsca cluster upgrade --id <id> --contract <ContractName> [--skip-copy-pods]` | 热升级已挂载合约。 |
-| `fsca cluster auto` | `fsca cluster auto [--dry-run]` | 按注解自动部署/链接/挂载。 |
+| `fsca cluster upgrade` | `fsca cluster upgrade --id <id> --contract <ContractName> [--skip-copy-pods] [--cleanup <keep\|soft\|hard>] [--yes]` | 热升级已挂载合约。 |
+| `fsca cluster auto` | `fsca cluster auto [--dry-run] [--cleanup <keep\|soft\|hard>] [--yes]` | 按注解自动部署/链接/挂载。 |
 | `fsca cluster check` | `fsca cluster check` | 静态检查注解、ID 冲突、环依赖（不写链）。 |
+| `fsca cluster rollback` | `fsca cluster rollback --id <contractId> [--generation <n>] [--dry-run] [--yes]` | 回滚到历史 `deprecated` 版本。 |
+| `fsca cluster history` | `fsca cluster history --id <contractId>` | 查看指定 contractId 的版本历史。 |
 | `fsca cluster operator list` | `fsca cluster operator list` | 列出 Operator。 |
 | `fsca cluster operator add` | `fsca cluster operator add <address>` | 添加 Operator。 |
 | `fsca cluster operator remove` | `fsca cluster operator remove <address>` | 移除 Operator。 |

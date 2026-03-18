@@ -11,12 +11,31 @@
 - ID 规划：固定区间，避免后续升级冲突。
 - 调用关系：先画图再落命令，避免双向授权遗漏。
 
-推荐 ID 规划：
+推荐 ID 规划（按分层治理，而非随机编号）：
 
-- `1-99`：核心业务模块
-- `100-199`：辅助模块
-- `200-299`：工具模块
-- `1000+`：测试模块
+- `1-99`：平台基础设施与保留段（不分配给业务 Pod）
+- `100-199`：Storage Pods（长期稳定、尽量不升级）
+- `200-399`：Core Logic Pods（业务逻辑，可热升级）
+- `400-599`：Adapter / Oracle / 外部接入
+- `600-799`：治理与运维辅助模块
+- `900+`：实验、灰度、测试
+
+Storage Pod 规划原则：
+
+- Storage ID 一经分配，禁止复用、禁止变更语义。
+- Logic Pod 升级始终复用原 Logic ID（通过 `cluster upgrade --id`），不要占用 Storage 段。
+- 需要新增数据模型时，优先新增 Storage Pod，不在旧 Storage Pod 上做破坏式语义迁移。
+- 共享数据（如全局配置、费率表）建议单独预留稳定区段（例如 `180-189`）。
+
+示例（Lending 域）：
+
+- `110` `AccountStorage`
+- `111` `PositionStorage`
+- `112` `RiskParamStorage`
+- `210` `LendingEngine`
+- `211` `LiquidationEngine`
+- `212` `InterestEngine`
+- `410` `PriceOracleAdapter`
 
 ## 2. 环境与配置管理
 
@@ -34,7 +53,7 @@
 - `account.privateKey`
 - `fsca.clusterAddress`（`cluster init` 后写入）
 
-注意：当前实现将私钥明文保存在 `project.json`，生产环境应使用专用部署账户并限制余额。
+注意：生产环境建议优先使用 `.env`（`FSCA_PRIVATE_KEY`、`FSCA_RPC_URL`）管理密钥与节点配置，不要在仓库中提交敏感字段。
 
 ## 3. 推荐上线流程（黄金路径）
 
@@ -42,7 +61,7 @@
 
 ```bash
 fsca init
-fsca cluster init --threshold 2
+fsca cluster init --threshold 2 --yes --cleanup keep
 ```
 
 实践建议：
@@ -58,9 +77,9 @@ fsca cluster operator list
 ## 步骤 B：部署业务 Pod（先部署，后挂载）
 
 ```bash
-fsca deploy --contract LendingPod --description LendingPod
-fsca deploy --contract PriceOracle --description PriceOracle
-fsca deploy --contract LiquidationPod --description LiquidationPod
+fsca deploy --contract LendingPod --description LendingPod --yes --cleanup soft
+fsca deploy --contract PriceOracle --description PriceOracle --yes --cleanup soft
+fsca deploy --contract LiquidationPod --description LiquidationPod --yes --cleanup soft
 ```
 
 实践建议：
@@ -74,14 +93,14 @@ fsca deploy --contract LiquidationPod --description LiquidationPod
 
 ```bash
 fsca cluster choose <LendingPod-Address>
-fsca cluster link positive <PriceOracle-Address> 2
-fsca cluster link positive <LiquidationPod-Address> 3
+fsca cluster link active <PriceOracle-Address> 2
+fsca cluster link active <LiquidationPod-Address> 3
 ```
 
 关键注意：
 
-- 当前代码实现中，`link` 类型参数是 `positive` 或 `passive`。  
-- 部分文档示例写的是 `active`，按实现会报错。
+- 推荐写法为 `active` / `passive`（CLI 对 `active` 做兼容映射）。
+- 历史命令中的 `positive` 仍可用，但不建议再作为主示例。
 
 ## 步骤 D：挂载上线
 
@@ -124,7 +143,8 @@ fsca wallet info <txIndex>
 推荐使用：
 
 ```bash
-fsca cluster upgrade --id <id> --contract <NewContractName>
+fsca cluster check
+fsca cluster upgrade --id <id> --contract <NewContractName> --yes --cleanup soft
 ```
 
 默认行为会复制旧合约的 active/passive 模块关系并重新挂载。适用于接口兼容升级。
@@ -143,14 +163,30 @@ fsca cluster upgrade --id <id> --contract <NewContractName> --skip-copy-pods
 - ABI 变更是否影响调用方。
 - 回滚路径是否可执行（旧版本 artifact 与地址记录齐全）。
 
-## 6. 回滚与应急
+## 6. 回滚与应急（M2）
 
-建议预置“快速回滚 SOP”：
+建议将回滚纳入标准命令，而不是“临时再部署回切”：
 
-1. 确认异常模块 ID。
-2. 重新部署上一个稳定版本。
-3. 使用 `cluster upgrade --id <same-id> --contract <StableVersion>` 回切。
-4. 用 `cluster graph` 与业务用例回归验证。
+```bash
+# 查看版本链
+fsca cluster history --id <id>
+
+# 预演回滚（不写链）
+fsca cluster rollback --id <id> --dry-run
+
+# 回滚到上一个版本
+fsca cluster rollback --id <id> --yes
+
+# 回滚到指定版本
+fsca cluster rollback --id <id> --generation <n> --yes
+```
+
+应急 SOP：
+
+1. 用 `cluster history` 确认目标版本（`deprecated`）。
+2. 先 `rollback --dry-run` 核对计划。
+3. 执行 `rollback`，检查 `rollback-report.json`。
+4. 回归 `cluster graph`、核心业务用例、权限用例。
 
 ## 7. 可观测性与验收
 
@@ -164,13 +200,14 @@ fsca cluster upgrade --id <id> --contract <NewContractName> --skip-copy-pods
 
 - `npx hardhat compile`
 - `npx hardhat test`
-- 关键命令的 smoke 测试（部署、链接、挂载、升级）
+- 关键命令 smoke 测试（部署、链接、挂载、升级、回滚）
+- 变更日志留存：`logs/<date>.log`、`cleanup-report.json`、`rollback-report.json`
 
 ## 8. 代码实现层面的坑位提示
 
 基于当前仓库实现，建议特别注意：
 
-- `fsca cluster link` 类型使用 `positive/passive`，不是 `active/passive`。
+- `fsca cluster link` 建议使用 `active/passive`（旧别名 `positive` 仍兼容）。
 - `fsca deploy` 依赖 `fsca.clusterAddress`，通常要先 `fsca cluster init`。
 - `fsca cluster choose` 会扫描注册表进行状态检查，注册量大时耗时会上升。
 - `project.json` 是状态真源之一，建议纳入版本管理策略并做变更审计。
@@ -181,32 +218,40 @@ fsca cluster upgrade --id <id> --contract <NewContractName> --skip-copy-pods
 # 0) 环境准备
 cp project.prod.json project.json
 
-# 1) 骨架部署
-fsca cluster init --threshold 2
+# 1) 静态检查
+fsca cluster check
+
+# 2) 骨架部署
+fsca cluster init --threshold 2 --yes --cleanup keep
 fsca wallet owners
 fsca cluster operator list
 
-# 2) 业务部署
-fsca deploy --contract LendingPod
-fsca deploy --contract PriceOracle
-fsca deploy --contract LiquidationPod
+# 3) 业务部署
+fsca deploy --contract LendingPod --yes --cleanup soft
+fsca deploy --contract PriceOracle --yes --cleanup soft
+fsca deploy --contract LiquidationPod --yes --cleanup soft
 
-# 3) 链路配置（未挂载阶段）
+# 4) 链路配置（未挂载阶段）
 fsca cluster choose <LendingPod-Address>
-fsca cluster link positive <PriceOracle-Address> 2
-fsca cluster link positive <LiquidationPod-Address> 3
+fsca cluster link active <PriceOracle-Address> 2
+fsca cluster link active <LiquidationPod-Address> 3
 
-# 4) 挂载上线
+# 5) 挂载上线
 fsca cluster choose <LendingPod-Address> && fsca cluster mount 1 "LendingPod"
 fsca cluster choose <PriceOracle-Address> && fsca cluster mount 2 "PriceOracle"
 fsca cluster choose <LiquidationPod-Address> && fsca cluster mount 3 "LiquidationPod"
 
-# 5) 验收
+# 6) 验收
 fsca cluster list mounted
 fsca cluster graph
 
-# 6) 后续升级
-fsca cluster upgrade --id 1 --contract LendingPodV2
+# 7) 后续升级（推荐先 check）
+fsca cluster check
+fsca cluster upgrade --id 1 --contract LendingPodV2 --yes --cleanup soft
+
+# 8) 应急回滚
+fsca cluster rollback --id 1 --dry-run
+fsca cluster rollback --id 1 --yes
 ```
 
 ## 10. 参考资料
@@ -486,3 +531,18 @@ fsca cluster graph
 - 生产变更窗口执行 `cluster auto` 前，先冻结 `project.json` 快照。
 - 出现函数级环告警时，先修业务调用路径，再执行正式装配。
 - 自动装配后至少回归：`cluster list mounted`、`cluster info <id>`、`cluster graph`。
+
+## 14. 版本治理（M2）落地建议
+
+当前版本治理建议按以下原则执行：
+
+- `alldeployedcontracts` 作为历史账本，至少保留 `generation`、`status`、`deploySeq`、`podSnapshot`。
+- 只允许通过 `cluster rollback` 恢复 `deprecated` 版本，避免手工 mount 旧版本造成语义漂移。
+- 每次升级/回滚后都执行：
+  - `fsca cluster history --id <id>`
+  - `fsca cluster list mounted`
+  - `fsca cluster graph`
+- 归档策略建议：
+  - 生产：`--cleanup soft`
+  - 测试：`--cleanup keep` 或 `soft`
+  - 禁止默认使用 `--cleanup hard` 作为常规流程

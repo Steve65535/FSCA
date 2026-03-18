@@ -394,7 +394,8 @@ function createProjectConfig(rootDir, config) {
       currentOperating: "",
       alldeployedcontracts: [],
       runningcontracts: [],
-      unmountedcontracts: []
+      unmountedcontracts: [],
+      cleanupPolicy: { defaultMode: "keep" }
     },
     security: existingConfig.security || {
       signMode: "local",

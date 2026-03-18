@@ -13,6 +13,7 @@ const { ethers } = require('ethers');
 
 const chainProvider = require('../../../chain/provider');
 const walletSigner = require('../../../wallet/signer');
+const { nextGeneration, nextDeploySeq, normalizeRecord } = require('../version');
 
 const getProvider = chainProvider.getProvider;
 const getSigner = walletSigner.getSigner;
@@ -56,6 +57,19 @@ module.exports = async function mount({ rootDir, args = {} }) {
 
         if (!currentOperating || !ethers.isAddress(currentOperating)) {
             throw new Error("No valid current operating contract. Run 'fsca cluster choose <addr>' or 'fsca deploy' first.");
+        }
+
+        // Guard: reject deprecated/archived contracts
+        const allDeployed = config.fsca.alldeployedcontracts || [];
+        const existingRecord = allDeployed.find(r => r.address && r.address.toLowerCase() === currentOperating.toLowerCase());
+        if (existingRecord) {
+            const normalized = normalizeRecord(existingRecord, 'alldeployedcontracts');
+            if (normalized.status === 'deprecated') {
+                throw new Error(`Contract ${currentOperating} is deprecated. Use "fsca cluster rollback" to restore it explicitly.`);
+            }
+            if (normalized.status === 'archived') {
+                throw new Error(`Contract ${currentOperating} is archived and cannot be mounted.`);
+            }
         }
 
         console.log(`Mounting Contract...`);
@@ -106,13 +120,46 @@ module.exports = async function mount({ rootDir, args = {} }) {
             config.fsca.runningcontracts.push(contractData);
         }
 
-        // Also update alldeployedcontracts with ID info if found
+        // Also update alldeployedcontracts with ID info, generation, status
+        // Only assign a new generation if this address doesn't already have one
+        // (prevents generation inflation on repeated mount/unmount of the same address)
+        const recordInAll = config.fsca.alldeployedcontracts.find(
+            c => c.address && c.address.toLowerCase() === currentOperating.toLowerCase()
+        );
+        const alreadyHasGeneration = recordInAll && recordInAll.generation != null;
+        const newGen = alreadyHasGeneration
+            ? recordInAll.generation
+            : nextGeneration(config.fsca.alldeployedcontracts, Number(id));
+        const newSeq = nextDeploySeq(config.fsca.alldeployedcontracts);
+        let foundInAll = false;
         config.fsca.alldeployedcontracts = config.fsca.alldeployedcontracts.map(c => {
             if (c.address.toLowerCase() === currentOperating.toLowerCase()) {
-                return { ...c, contractId: id, name: name }; // update info
+                foundInAll = true;
+                return {
+                    ...c,
+                    contractId: Number(id),
+                    name,
+                    generation: newGen,
+                    deploySeq: c.deploySeq || newSeq,
+                    status: 'mounted',
+                    podSnapshot: c.podSnapshot || { active: [], passive: [] },
+                };
             }
             return c;
         });
+        // If not found in alldeployedcontracts, add it
+        if (!foundInAll) {
+            config.fsca.alldeployedcontracts.push({
+                name,
+                address: currentOperating,
+                contractId: Number(id),
+                generation: newGen,
+                deploySeq: newSeq,
+                status: 'mounted',
+                timeStamp: timestamp,
+                podSnapshot: { active: [], passive: [] },
+            });
+        }
 
         saveProjectConfig(rootDir, config);
         console.log(`✓ Cache updated: Moved from Unmounted (${initialUnmountedCount} -> ${config.fsca.unmountedcontracts.length}) to Running.`);

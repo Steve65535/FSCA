@@ -20,6 +20,8 @@ const chainTx = require('../../../chain/tx');
 const chainAbi = require('../../../chain/abi');
 const walletSigner = require('../../../wallet/signer');
 const credentials = require('../../../wallet/credentials');
+const { resolveCleanupMode, performCleanup, findSourceFile, findArtifactFile } = require('../cleanup');
+const { confirm } = require('../confirm');
 
 /**
  * 加载项目配置
@@ -142,6 +144,12 @@ module.exports = async function clusterInit({ rootDir, args = {} }) {
     // 1. 加载配置
     const config = loadProjectConfig(rootDir);
     const threshold = args.threshold || 1;
+
+    const ok = await confirm('Deploy FSCA cluster infrastructure? This will submit on-chain transactions.', !!args.yes);
+    if (!ok) {
+      console.log('Aborted.');
+      return;
+    }
 
     // 2. 检查合约是否已编译
     const artifactsDir = path.join(rootDir, 'artifacts');
@@ -362,6 +370,32 @@ module.exports = async function clusterInit({ rootDir, args = {} }) {
       }
     }
     console.log('');
+
+    // Cleanup infrastructure contract sources/artifacts
+    const cleanupMode = resolveCleanupMode(args, config);
+    if (cleanupMode !== 'keep') {
+      const infraContracts = ['ClusterManager', 'EvokerManager', 'ProxyWallet', 'MultiSigWallet'];
+      const cleanupFiles = infraContracts.map(name => ({
+        contractName: name,
+        sourcePath: findSourceFile(rootDir, name),
+        artifactPath: findArtifactFile(rootDir, name),
+      }));
+      const cleanupResult = performCleanup({ mode: cleanupMode, files: cleanupFiles, rootDir });
+      for (const action of cleanupResult.actions) {
+        if (action.status === 'ok') console.log(`✓ Cleanup [${cleanupMode}]: ${action.contractName} ${action.fileType} ${action.action}`);
+        else if (action.status === 'skipped') console.log(`  Cleanup: ${action.contractName} ${action.fileType} skipped`);
+        else console.warn(`⚠  Cleanup error (${action.contractName} ${action.fileType}): ${action.error}`);
+      }
+      if (cleanupResult.errors.length > 0 || cleanupResult.actions.some(a => a.status === 'ok')) {
+        const reportPath = path.join(rootDir, 'cleanup-report.json');
+        fs.writeFileSync(reportPath, JSON.stringify({
+          timestamp: new Date().toISOString(),
+          mode: cleanupMode,
+          actions: cleanupResult.actions,
+          errors: cleanupResult.errors,
+        }, null, 2), 'utf-8');
+      }
+    }
 
     // 9. 更新 project.json
     updateProjectConfig(rootDir, {

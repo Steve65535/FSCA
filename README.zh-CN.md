@@ -3,11 +3,6 @@
 </p>
 
 <p align="center">
-  <strong>将 Kubernetes 的编排理念引入 EVM 智能合约开发。</strong><br/>
-  将单体 Solidity 合约拆解为模块化、可热插拔的微服务集群 —— 由多签治理，运行时动态链接。
-</p>
-
-<p align="center">
   <a href="https://www.npmjs.com/package/fsca-cli"><img src="https://img.shields.io/npm/v/fsca-cli?style=flat-square&color=4F46E5" alt="npm version" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-06B6D4?style=flat-square" alt="License" /></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%3E%3D16-brightgreen?style=flat-square" alt="Node" /></a>
@@ -21,6 +16,70 @@
   <a href="CONTRIBUTING.md">🤝 贡献指南</a> ·
   <a href="SECURITY.md">🔒 安全策略</a>
 </p>
+
+---
+
+# FSCA — Full Stack Contract Architecture
+
+> 智能合约的微服务架构。
+
+FSCA 是一个用于构建**模块化、可升级、系统级智能合约**的开发框架。
+
+它不把协议当作一个带升级模式的单体合约（如代理模式），而是将其视为一个**可组合的服务系统**：
+
+- 每个模块是一个独立的合约服务
+- 状态与逻辑分离，升级更安全
+- 服务通过集群层编排
+- 为复杂的、长期运行的系统设计 —— 而不仅仅是单个合约
+
+---
+
+## 为什么选择 FSCA？
+
+随着智能合约超越简单应用，**系统复杂度成为真正的瓶颈**：
+
+- 单体合约难以安全升级
+- 模块化模式仍然共享状态，产生耦合
+- 复杂协议缺乏清晰的系统架构
+
+FSCA 引入了一种新范式：
+
+> **从单合约升级 → 到系统级架构**
+
+---
+
+## 1 分钟上手
+
+```bash
+fsca init
+fsca cluster init
+
+# 给合约加注解，然后一条命令完成所有事：
+fsca cluster auto
+```
+
+在合约中添加注解：
+
+```solidity
+// @fsca-id 1
+// @fsca-active
+// @fsca-passive
+// @fsca-auto yes
+contract AccountStorage is normalTemplate { ... }
+
+// @fsca-id 2
+// @fsca-active 1,3
+// @fsca-passive
+// @fsca-auto yes
+contract TradeEngine is normalTemplate { ... }
+```
+
+然后运行：
+
+```bash
+fsca cluster auto check   # 静态分析：ID 冲突、pod 环、函数调用环
+fsca cluster auto         # 全自动：deploy all → link all → mount all
+```
 
 ---
 
@@ -83,6 +142,14 @@ fsca cluster link active 0xOracleAddr... 2
 fsca cluster graph
 ```
 
+或使用**声明式自动装配**（推荐用于多合约系统）：
+
+```bash
+# 在每个合约源码顶部添加 @fsca-* 注解，然后：
+fsca cluster auto check   # 静态检查：ID 冲突、pod 环、函数调用环
+fsca cluster auto         # 一键完成 deploy + link + mount
+```
+
 **完成！** 你已经拥有一个完全编排的、多签治理的、可热插拔的 DeFi 后端。 🎉
 
 ---
@@ -102,6 +169,29 @@ Liquidation  ──┘
 - ✅ 每个合约只负责一件事
 - ✅ 独立部署与升级周期
 - ✅ 更小的字节码单元 = 更低的 Gas 成本
+
+### 声明式自动装配
+
+在合约源码顶部添加 `@fsca-*` 注解，CLI 自动处理剩余一切：
+
+```solidity
+// @fsca-id 2
+// @fsca-active 1,3
+// @fsca-passive
+// @fsca-auto yes
+contract TradeEngine is normalTemplate { ... }
+```
+
+```bash
+fsca cluster auto check      # ID 冲突检测、pod 环分析、函数调用环检测
+fsca cluster auto            # 完整流水线：全部 deploy → 全部 link → 全部 mount
+fsca cluster auto --dry-run  # 预览执行计划，不执行任何链上操作
+```
+
+- ✅ 自动拓扑排序 — 按依赖顺序部署
+- ✅ Pod 级环检测 — 自动延迟到 afterMount 补边
+- ✅ 函数级调用环检测 — 跳过不安全的 pod link，提示开发者
+- ✅ 与现有项目状态协调 — 已挂载的合约自动跳过
 
 ### 运行时动态链接
 ```bash
@@ -167,13 +257,17 @@ Pod A 调用 Pod B
 | 命令 | 说明 |
 |------|------|
 | `fsca init` | 初始化项目 + Hardhat + 配置 |
-| `fsca deploy --contract <Name>` | 编译并部署 NormalTemplate 合约 |
-| `fsca cluster init` | 部署编排骨架 |
+| `fsca deploy --contract <Name> [--cleanup <keep\|soft\|hard>] [--yes]` | 编译并部署 NormalTemplate 合约 |
+| `fsca cluster init [--cleanup <keep\|soft\|hard>] [--yes]` | 部署编排骨架 |
 | `fsca cluster mount <id> <name>` | 将合约注册到集群 |
 | `fsca cluster unmount <id>` | 从集群卸载合约 |
-| `fsca cluster upgrade --id <id> --contract <Name>` | 热替换合约版本 |
+| `fsca cluster upgrade --id <id> --contract <Name> [--cleanup <keep\|soft\|hard>] [--yes]` | 热替换合约版本 |
 | `fsca cluster link <type> <addr> <id>` | 创建主动/被动依赖 |
 | `fsca cluster unlink <type> <addr> <id>` | 移除依赖 |
+| `fsca cluster auto check` | 静态检查：ID 冲突、pod 环、函数调用环（不写链） |
+| `fsca cluster auto [--dry-run] [--cleanup <keep\|soft\|hard>] [--yes]` | 声明式自动装配：deploy + link + mount |
+| `fsca cluster rollback --id <contractId> [--generation <n>] [--dry-run] [--yes]` | 回滚到历史 `deprecated` 版本 |
+| `fsca cluster history --id <contractId>` | 查看指定 contractId 的版本历史 |
 | `fsca cluster graph` | 生成 Mermaid 拓扑图 |
 | `fsca cluster list mounted` | 列出所有已挂载合约 |
 | `fsca cluster info <id>` | 查看合约元数据 |
@@ -197,6 +291,8 @@ Pod A 调用 Pod B
 | 热替换升级 | ❌ | ✅（proxy） | ✅（facets） | ✅（mount） |
 | 多签治理 | ❌ | ❌ | ❌ | ✅ 内置 |
 | 拓扑可视化 | ❌ | ❌ | ❌ | ✅ Mermaid |
+| 声明式自动装配 | ❌ | ❌ | ❌ | ✅ |
+| 环检测（pod + 函数级） | ❌ | ❌ | ❌ | ✅ |
 | CLI 自动化 | 部分 | 部分 | ❌ | ✅ 完整 |
 | 零信任鉴权 | ❌ | ❌ | ❌ | ✅ |
 
@@ -205,11 +301,11 @@ Pod A 调用 Pod B
 ## 📈 项目统计
 
 ```
-总代码行数:     8,057
+总代码行数:     8,500+
   Solidity:    1,175  (4 个核心合约)
-  JavaScript:  4,749  (18 条 CLI 命令)
-  文档:        1,490+
-  测试:        单元 + 集成测试 (Jest)
+  JavaScript:  5,200+ (20 条 CLI 命令 + 自动装配子系统)
+  文档:        1,800+
+  测试:        134 单元测试（Jest，全部通过）
 ```
 
 ---
