@@ -1,11 +1,11 @@
-const { Wallet } = require("ethers");
+const { Wallet, NonceManager } = require("ethers");
 const credentials = require("./credentials");
 
 /**
  * 获取 Signer
  * @param {string} privateKey - 私钥
  * @param {Object} provider - Provider 实例
- * @returns {Wallet} Wallet 实例
+ * @returns {NonceManager} NonceManager-wrapped Wallet 实例
  */
 function getSigner(privateKey, provider) {
   credentials.loadEnvFile(process.cwd());
@@ -14,7 +14,7 @@ function getSigner(privateKey, provider) {
   if (!resolvedPrivateKey) {
     throw new Error("Private key is required (set FSCA_PRIVATE_KEY or account.privateKey)");
   }
-  return new Wallet(resolvedPrivateKey, provider);
+  return new NonceManager(new Wallet(resolvedPrivateKey, provider));
 }
 
 module.exports = { getSigner };

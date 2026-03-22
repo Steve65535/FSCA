@@ -36,6 +36,12 @@ const CLUSTER_ABI = [
     'function addActivePodAfterMount(address sourceAddr, address targetAddr, uint32 targetId) external',
     'function addPassivePodAfterMount(address sourceAddr, address targetAddr, uint32 targetId) external',
     'function registerContract(uint32 id, string memory name, address contractAddr) external',
+    'function getById(uint32 id) view returns (tuple(uint32 contractId, string name, address contractAddr))',
+];
+
+const NORMAL_TEMPLATE_QUERY_ABI = [
+    'function getActiveModuleAddress(uint32 _contractId) view returns (address)',
+    'function getPassiveModuleAddress(uint32 _contractId) view returns (address)',
 ];
 
 function printPlan(planItems, cycleEdges, idToName, funcCycles, funcCycleEdgeSet) {
@@ -76,6 +82,65 @@ function printPlan(planItems, cycleEdges, idToName, funcCycles, funcCycleEdgeSet
         }
     }
     console.log('');
+}
+
+async function alignPlanWithChainState(plan, clusterRead, provider) {
+    const warnings = [];
+
+    for (const item of plan) {
+        if (item.state !== 'mounted' && item.state !== 'unmounted') continue;
+
+        let chainAddr = null;
+        try {
+            const entry = await clusterRead.getById(item.fscaId);
+            chainAddr = entry?.contractAddr || null;
+        } catch {
+            chainAddr = null;
+        }
+
+        if (chainAddr && chainAddr !== ethers.ZeroAddress) {
+            if (!item.existingAddress || chainAddr.toLowerCase() !== item.existingAddress.toLowerCase()) {
+                warnings.push(
+                    `Contract "${item.contractName}" (id=${item.fscaId}) project.json address differs from on-chain registry; using on-chain address ${chainAddr}.`
+                );
+                item.existingAddress = chainAddr;
+            }
+            item.state = 'mounted';
+            item.actions = [];
+            continue;
+        }
+
+        const existingCode = item.existingAddress ? await provider.getCode(item.existingAddress) : '0x';
+        if (existingCode && existingCode !== '0x') {
+            if (item.state === 'mounted') {
+                warnings.push(
+                    `Contract "${item.contractName}" (id=${item.fscaId}) is marked mounted in project.json but missing from on-chain registry; downgrading to unmounted.`
+                );
+            }
+            item.state = 'unmounted';
+            item.actions = ['link', 'mount'];
+            continue;
+        }
+
+        warnings.push(
+            `Contract "${item.contractName}" (id=${item.fscaId}) has no on-chain code at project.json address; downgrading to undeployed.`
+        );
+        item.state = 'undeployed';
+        item.existingAddress = null;
+        item.actions = ['deploy', 'link', 'mount'];
+    }
+
+    return warnings;
+}
+
+async function podLinkExists(provider, sourceAddr, type, targetId, targetAddr) {
+    const source = new ethers.Contract(sourceAddr, NORMAL_TEMPLATE_QUERY_ABI, provider);
+    const linkedAddr = type === 'active'
+        ? await source.getActiveModuleAddress(targetId)
+        : await source.getPassiveModuleAddress(targetId);
+    return !!linkedAddr &&
+        linkedAddr !== ethers.ZeroAddress &&
+        linkedAddr.toLowerCase() === targetAddr.toLowerCase();
 }
 
 module.exports = async function auto({ rootDir, args = {} }) {
@@ -151,10 +216,16 @@ module.exports = async function auto({ rootDir, args = {} }) {
 
         // Connect
         const provider = getProvider(config.network.rpc);
-        const rawSigner = getSigner(config.account.privateKey, provider);
-        const signer = new ethers.NonceManager(rawSigner);
+        const signer = getSigner(config.account.privateKey, provider);
         const clusterAddr = config.fsca.clusterAddress;
+        const clusterRead = new ethers.Contract(clusterAddr, CLUSTER_ABI, provider);
         const cluster = new ethers.Contract(clusterAddr, CLUSTER_ABI, signer);
+
+        const chainStateWarnings = await alignPlanWithChainState(plan, clusterRead, provider);
+        for (const w of chainStateWarnings) {
+            console.warn(`  ⚠  ${w}`);
+            report.warnings.push(w);
+        }
 
         // Checkpoint helpers
         const cpPath = path.join(rootDir, 'auto-checkpoint.json');
@@ -284,7 +355,11 @@ module.exports = async function auto({ rootDir, args = {} }) {
         }
 
         // 5. Link all contracts (beforeMount), skipping pod-cycle edges and func-cycle edges
+        // If target is also being freshly deployed (not yet mounted/registered on-chain),
+        // defer to afterMount to avoid "target id and addr dismatch" revert.
         console.log('[5/6] Linking contracts...');
+        const idToState = new Map(plan.map(i => [i.fscaId, i.state]));
+        const deferredLinks = []; // { type, from: item, depId } — will be linked afterMount
         for (const item of plan) {
             if (!item.actions.includes('link')) continue;
             const contractAddr = deployedAddrs.get(item.fscaId);
@@ -301,6 +376,11 @@ module.exports = async function auto({ rootDir, args = {} }) {
                 const targetAddr = deployedAddrs.get(depId);
                 if (!targetAddr) { console.warn(`    ⚠  active dep id=${depId} not found, skipping`); continue; }
                 if (completedSteps.has(edgeKey)) { console.log(`  ↩ skip ${edgeKey}`); continue; }
+                // Defer if target is freshly deployed (not yet registered on-chain)
+                if (idToState.get(depId) === 'undeployed' || idToState.get(depId) === 'unmounted') {
+                    deferredLinks.push({ type: 'active', item, depId, contractAddr, targetAddr, edgeKey });
+                    continue;
+                }
                 await sendTx(() => cluster.addActivePodBeforeMount(contractAddr, targetAddr, depId), { label: edgeKey });
                 console.log(`    Linked active  id=${depId} → id=${item.fscaId}`);
                 completedSteps.add(edgeKey);
@@ -317,6 +397,11 @@ module.exports = async function auto({ rootDir, args = {} }) {
                 const targetAddr = deployedAddrs.get(depId);
                 if (!targetAddr) { console.warn(`    ⚠  passive dep id=${depId} not found, skipping`); continue; }
                 if (completedSteps.has(edgeKey)) { console.log(`  ↩ skip ${edgeKey}`); continue; }
+                // Defer if target is freshly deployed (not yet registered on-chain)
+                if (idToState.get(depId) === 'undeployed' || idToState.get(depId) === 'unmounted') {
+                    deferredLinks.push({ type: 'passive', item, depId, contractAddr, targetAddr, edgeKey });
+                    continue;
+                }
                 await sendTx(() => cluster.addPassivePodBeforeMount(contractAddr, targetAddr, depId), { label: edgeKey });
                 console.log(`    Linked passive id=${depId} → id=${item.fscaId}`);
                 completedSteps.add(edgeKey);
@@ -362,6 +447,28 @@ module.exports = async function auto({ rootDir, args = {} }) {
             report.assembled.push({ contractName: item.contractName, fscaId: item.fscaId, address: contractAddr });
         }
 
+        // AfterMount: deferred links (targets were freshly deployed, now registered)
+        if (deferredLinks.length > 0) {
+            console.log(`\n  Linking deferred pod edges (afterMount, ${deferredLinks.length} edge(s))...`);
+            for (const { type, item, depId, contractAddr, targetAddr, edgeKey } of deferredLinks) {
+                if (completedSteps.has(edgeKey)) { console.log(`  ↩ skip ${edgeKey}`); continue; }
+                if (await podLinkExists(provider, contractAddr, type, depId, targetAddr)) {
+                    console.log(`  ↩ skip ${edgeKey} (already linked on-chain)`);
+                    completedSteps.add(edgeKey);
+                    continue;
+                }
+                if (type === 'active') {
+                    await sendTx(() => cluster.addActivePodAfterMount(contractAddr, targetAddr, depId), { label: edgeKey });
+                    console.log(`    Linked active  id=${depId} → id=${item.fscaId} (deferred)`);
+                } else {
+                    await sendTx(() => cluster.addPassivePodAfterMount(contractAddr, targetAddr, depId), { label: edgeKey });
+                    console.log(`    Linked passive id=${depId} → id=${item.fscaId} (deferred)`);
+                }
+                completedSteps.add(edgeKey);
+                writeCheckpoint(completedSteps, { deployedAddrs: Object.fromEntries(deployedAddrs) });
+            }
+        }
+
         // AfterMount: pod-level cycle edges only (skip func-cycle edges)
         const afterMountEdges = cycleEdges.filter(e => !funcCycleEdgeSet.has(`${e.from}->${e.to}`));
         for (const edge of cycleEdges) {
@@ -379,7 +486,13 @@ module.exports = async function auto({ rootDir, args = {} }) {
                     continue;
                 }
                 const amKey = `afterMount:${edge.type}:${edge.from}->${edge.to}`;
-                if (completedSteps.has(amKey)) { console.log(`  ↩ skip ${amKey}`); continue; }
+                const linkKey = `link:${edge.type}:${edge.from}->${edge.to}`;
+                if (completedSteps.has(amKey) || completedSteps.has(linkKey)) { console.log(`  ↩ skip ${amKey}`); continue; }
+                if (await podLinkExists(provider, toAddr, edge.type, edge.from, fromAddr)) {
+                    console.log(`  ↩ skip ${amKey} (already linked on-chain)`);
+                    completedSteps.add(amKey);
+                    continue;
+                }
                 if (edge.type === 'active') {
                     await sendTx(() => cluster.addActivePodAfterMount(toAddr, fromAddr, edge.from), { label: amKey });
                 } else {

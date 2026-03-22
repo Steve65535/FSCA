@@ -70,21 +70,7 @@ function saveProjectConfig(rootDir, config) {
     fs.writeFileSync(path.join(rootDir, 'project.json'), JSON.stringify(config, null, 2), 'utf-8');
 }
 
-function loadArtifact(rootDir, contractName) {
-    const searchPaths = [
-        path.join(rootDir, 'artifacts', 'contracts', 'undeployed', `${contractName}.sol`, `${contractName}.json`),
-        path.join(rootDir, 'artifacts', 'contracts', 'undeployed', 'lib', `${contractName}.sol`, `${contractName}.json`),
-        path.join(rootDir, 'artifacts', 'contracts', 'undeployed', 'structure', `${contractName}.sol`, `${contractName}.json`),
-        path.join(rootDir, 'artifacts', 'contracts', 'undeployed', 'wallet', `${contractName}.sol`, `${contractName}.json`),
-        path.join(rootDir, 'artifacts', 'contracts', `${contractName}.sol`, `${contractName}.json`),
-    ];
-    for (const p of searchPaths) {
-        if (fs.existsSync(p)) {
-            return JSON.parse(fs.readFileSync(p, 'utf-8'));
-        }
-    }
-    throw new Error(`Artifact not found for "${contractName}". Run "npx hardhat compile" first.`);
-}
+const { loadArtifact } = require('./auto/utils');
 
 function buildConstructorArgs(artifact, clusterAddr, registeredName) {
     const inputs = artifact?.abi?.find(item => item.type === 'constructor')?.inputs || [];
@@ -159,8 +145,7 @@ module.exports = async function upgrade({ rootDir, args = {} }) {
         const cpState = checkpoint ? checkpoint.state : {};
 
         const provider = getProvider(config.network.rpc);
-        const rawSigner = getSigner(config.account.privateKey, provider);
-        const signer = new ethers.NonceManager(rawSigner);
+        const signer = getSigner(config.account.privateKey, provider);
 
         const clusterRead = new ethers.Contract(clusterAddr, CLUSTER_ABI, provider);
         const clusterWrite = new ethers.Contract(clusterAddr, CLUSTER_ABI, signer);

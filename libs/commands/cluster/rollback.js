@@ -131,8 +131,7 @@ module.exports = async function rollback({ rootDir, args = {} }) {
         if (!ok) { console.log('Aborted.'); return; }
 
         // 4. Read current contract's pod config for its snapshot (before unmounting)
-        const rawSigner = getSigner(config.account.privateKey, provider);
-        const signer = new ethers.NonceManager(rawSigner);
+        const signer = getSigner(config.account.privateKey, provider);
         const clusterAddr = config.fsca.clusterAddress;
         const clusterWrite = new ethers.Contract(clusterAddr, CLUSTER_ABI, signer);
 
