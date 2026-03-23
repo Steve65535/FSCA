@@ -17,6 +17,15 @@ const { acquireLock } = require('../clusterLock');
 const getProvider = chainProvider.getProvider;
 const getSigner = walletSigner.getSigner;
 
+const TEMPLATE_ALL_ABI = [
+    'function getAllActiveModules() view returns (tuple(uint32 contractId, address moduleAddress)[])',
+    'function getAllPassiveModules() view returns (tuple(uint32 contractId, address moduleAddress)[])',
+];
+
+function saveProjectConfig(rootDir, config) {
+    fs.writeFileSync(path.join(rootDir, 'project.json'), JSON.stringify(config, null, 2), 'utf-8');
+}
+
 function loadProjectConfig(rootDir) {
     const configPath = path.join(rootDir, 'project.json');
     if (!fs.existsSync(configPath)) {
@@ -118,6 +127,28 @@ module.exports = async function link({ rootDir, args = {} }) {
         }
 
         console.log(`✓ Transaction confirmed in block ${receipt.blockNumber}`);
+
+        // Snapshot sync: read live pod state from chain and update project.json
+        try {
+            const contract = new ethers.Contract(currentOperating, TEMPLATE_ALL_ABI, provider);
+            const [activeModules, passiveModules] = await Promise.all([
+                contract.getAllActiveModules(),
+                contract.getAllPassiveModules(),
+            ]);
+            const podSnapshot = {
+                active: activeModules.map(m => ({ contractId: Number(m.contractId) })),
+                passive: passiveModules.map(m => ({ contractId: Number(m.contractId) })),
+            };
+            config.fsca.alldeployedcontracts = (config.fsca.alldeployedcontracts || []).map(r =>
+                r.address && r.address.toLowerCase() === currentOperating.toLowerCase()
+                    ? { ...r, podSnapshot }
+                    : r
+            );
+            saveProjectConfig(rootDir, config);
+            console.log(`  Pod snapshot: active=[${podSnapshot.active.map(p => p.contractId).join(',')}] passive=[${podSnapshot.passive.map(p => p.contractId).join(',')}]`);
+        } catch (e) {
+            throw new Error(`Link already changed on-chain, but pod snapshot sync failed: ${e.message}`);
+        }
 
         // Attempt parse logs
         try {

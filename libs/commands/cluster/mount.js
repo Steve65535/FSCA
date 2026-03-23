@@ -20,6 +20,11 @@ const { acquireLock } = require('../clusterLock');
 const getProvider = chainProvider.getProvider;
 const getSigner = walletSigner.getSigner;
 
+const TEMPLATE_ABI = [
+    'function getAllActiveModules() view returns (tuple(uint32 contractId, address moduleAddress)[])',
+    'function getAllPassiveModules() view returns (tuple(uint32 contractId, address moduleAddress)[])',
+];
+
 function loadProjectConfig(rootDir) {
     const configPath = path.join(rootDir, 'project.json');
     if (!fs.existsSync(configPath)) {
@@ -155,6 +160,29 @@ module.exports = async function mount({ rootDir, args = {} }) {
         }
 
         saveProjectConfig(rootDir, config);
+
+        // Snapshot sync: read live pod state from chain
+        try {
+            const contract = new ethers.Contract(currentOperating, TEMPLATE_ABI, provider);
+            const [activeModules, passiveModules] = await Promise.all([
+                contract.getAllActiveModules(),
+                contract.getAllPassiveModules(),
+            ]);
+            const podSnapshot = {
+                active: activeModules.map(m => ({ contractId: Number(m.contractId) })),
+                passive: passiveModules.map(m => ({ contractId: Number(m.contractId) })),
+            };
+            config.fsca.alldeployedcontracts = config.fsca.alldeployedcontracts.map(c =>
+                c.address && c.address.toLowerCase() === currentOperating.toLowerCase()
+                    ? { ...c, podSnapshot }
+                    : c
+            );
+            saveProjectConfig(rootDir, config);
+            console.log(`  Pod snapshot: active=[${podSnapshot.active.map(p => p.contractId).join(',')}] passive=[${podSnapshot.passive.map(p => p.contractId).join(',')}]`);
+        } catch (e) {
+            throw new Error(`Mount already changed on-chain, but pod snapshot sync failed: ${e.message}`);
+        }
+
         console.log(`✓ Cache updated: Moved from Unmounted (${initialUnmountedCount} -> ${config.fsca.unmountedcontracts.length}) to Running.`);
 
         } finally {

@@ -288,6 +288,28 @@ module.exports = async function upgrade({ rootDir, args = {} }) {
         saveProjectConfig(rootDir, config);
         console.log('      Updated project.json');
 
+        // Snapshot sync: read live pod state for new contract from chain
+        try {
+            const newContract = new ethers.Contract(newAddr, TEMPLATE_ABI, provider);
+            const [newActiveModules, newPassiveModules] = await Promise.all([
+                newContract.getAllActiveModules(),
+                newContract.getAllPassiveModules(),
+            ]);
+            const newPodSnapshot = {
+                active: newActiveModules.map(m => ({ contractId: Number(m.contractId) })),
+                passive: newPassiveModules.map(m => ({ contractId: Number(m.contractId) })),
+            };
+            config.fsca.alldeployedcontracts = config.fsca.alldeployedcontracts.map(r =>
+                r.address && r.address.toLowerCase() === newAddr.toLowerCase()
+                    ? { ...r, podSnapshot: newPodSnapshot }
+                    : r
+            );
+            saveProjectConfig(rootDir, config);
+            console.log(`      Pod snapshot: active=[${newPodSnapshot.active.map(p => p.contractId).join(',')}] passive=[${newPodSnapshot.passive.map(p => p.contractId).join(',')}]`);
+        } catch (e) {
+            throw new Error(`Upgrade already changed on-chain, but new contract pod snapshot sync failed: ${e.message}`);
+        }
+
         deleteCheckpoint();
 
         // Cleanup new contract's source/artifacts
