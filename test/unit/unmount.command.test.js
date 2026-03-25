@@ -38,8 +38,13 @@ function baseProject() {
   };
 }
 
+const mockSendTx = jest.fn();
+const mockAcquireLock = jest.fn();
+
 jest.mock('../../chain/provider', () => ({ getProvider: jest.fn(() => ({})) }));
 jest.mock('../../wallet/signer', () => ({ getSigner: jest.fn(() => ({})) }));
+jest.mock('../../libs/commands/txExecutor', () => ({ sendTx: (...args) => mockSendTx(...args) }));
+jest.mock('../../libs/commands/clusterLock', () => ({ acquireLock: (...args) => mockAcquireLock(...args) }));
 
 const contractStub = {
   deleteContract: jest.fn(),
@@ -54,10 +59,12 @@ beforeEach(() => {
     throw new Error(`process.exit:${code}`);
   });
 
-  contractStub.deleteContract.mockResolvedValue({
-    hash: '0xTxHash',
-    wait: jest.fn().mockResolvedValue({}),
+  mockAcquireLock.mockReturnValue({ release: jest.fn() });
+  mockSendTx.mockImplementation(async (fn) => {
+    await fn();
+    return { hash: '0xTxHash' };
   });
+  contractStub.deleteContract.mockResolvedValue({});
   jest.spyOn(ethers, 'Contract').mockImplementation(() => contractStub);
   jest.spyOn(ethers.ethers, 'Contract').mockImplementation(() => contractStub);
 });
@@ -67,10 +74,12 @@ afterEach(() => {
 });
 
 describe('unmount command — real unmount.js path', () => {
-  it('moves running contract to unmounted and clears contractId', async () => {
+  it('moves running contract to unmounted, clears contractId, acquires and releases lock', async () => {
     const dir = makeTmpDir();
     writeClusterArtifact(dir);
     writeProjectJson(dir, baseProject());
+    const mockRelease = jest.fn();
+    mockAcquireLock.mockReturnValue({ release: mockRelease });
 
     const unmount = require('../../libs/commands/cluster/unmount');
     await unmount({ rootDir: dir, args: { id: '200' } });
@@ -86,6 +95,8 @@ describe('unmount command — real unmount.js path', () => {
       }),
     ]);
     expect(contractStub.deleteContract).toHaveBeenCalledWith('200');
+    expect(mockAcquireLock).toHaveBeenCalledWith(dir, expect.any(String), 'cluster unmount');
+    expect(mockRelease).toHaveBeenCalled();
   });
 
   it('keeps cache stable and warns when on-chain unmount succeeds but running cache misses', async () => {
@@ -103,5 +114,21 @@ describe('unmount command — real unmount.js path', () => {
     expect(updated.fsca.runningcontracts).toEqual([]);
     expect(updated.fsca.unmountedcontracts).toEqual([{ name: 'Old', address: '0x' + 'c'.repeat(40), contractId: null }]);
     expect(console.warn).toHaveBeenCalledWith(expect.stringContaining("not found in local 'runningcontracts' cache."));
+  });
+
+  it('syncs alldeployedcontracts status from mounted to deployed', async () => {
+    const dir = makeTmpDir();
+    writeClusterArtifact(dir);
+    const config = baseProject();
+    config.fsca.alldeployedcontracts = [
+      { name: 'SwapEngine', address: '0x' + 'b'.repeat(40), contractId: 200, status: 'mounted', generation: 1 },
+    ];
+    writeProjectJson(dir, config);
+
+    const unmount = require('../../libs/commands/cluster/unmount');
+    await unmount({ rootDir: dir, args: { id: '200' } });
+
+    const updated = readProjectJson(dir);
+    expect(updated.fsca.alldeployedcontracts[0].status).toBe('deployed');
   });
 });

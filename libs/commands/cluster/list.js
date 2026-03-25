@@ -225,8 +225,8 @@ function displayWithLess(content) {
  * @param {number} pageSize - 每页显示的行数
  */
 async function displayWithPager(lines, pageSize = 20) {
-  if (lines.length <= pageSize) {
-    // 如果内容不多，直接显示
+  if (lines.length <= pageSize || !process.stdout.isTTY) {
+    // 内容不多，或非交互式环境（CI / pipe）——直接输出
     console.log(lines.join('\n'));
     return;
   }

@@ -139,4 +139,26 @@ describe('cluster readonly commands', () => {
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Mounted Contracts (1)'));
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('SwapEngine'));
   });
+
+  it('list dumps all lines to console.log directly when stdout is not a TTY', async () => {
+    const dir = makeTmpDir();
+    writeProjectJson(dir, baseProject());
+    writeClusterArtifact(dir);
+
+    const originalIsTTY = process.stdout.isTTY;
+    Object.defineProperty(process.stdout, 'isTTY', { value: false, configurable: true });
+
+    try {
+      const list = require('../../libs/commands/cluster/list');
+      await list({ rootDir: dir, args: {}, subcommands: ['cluster', 'list', 'mounted'] });
+
+      // In non-TTY mode displayWithPager must call console.log with the joined block,
+      // never spawning less or the interactive pager.
+      const allCalls = console.log.mock.calls.map(c => c[0]);
+      const block = allCalls.find(s => typeof s === 'string' && s.includes('SwapEngine'));
+      expect(block).toBeDefined();
+    } finally {
+      Object.defineProperty(process.stdout, 'isTTY', { value: originalIsTTY, configurable: true });
+    }
+  });
 });

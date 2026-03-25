@@ -157,6 +157,8 @@ function generateHtml(mermaidContent, nodes) {
         th { background: #f0f0f0; font-weight: 600; }
         code { background: #f5f5f5; padding: 2px 6px; border-radius: 3px; font-size: 0.9em; }
         .note { background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px; margin-top: 15px; border-radius: 4px; }
+        .mermaid { width: 100%; min-height: 400px; overflow: auto; }
+        .mermaid svg { max-width: 100%; height: auto; }
     </style>
 </head>
 <body>
@@ -164,9 +166,9 @@ function generateHtml(mermaidContent, nodes) {
 
     <div class="container">
         <h2>Dependency Graph</h2>
-        <pre class="mermaid">
+        <div class="mermaid">
 ${mermaidContent}
-        </pre>
+        </div>
         <div id="explanation">
             <p><strong>Node:</strong> A Smart Contract Pod (Service).</p>
             <p><strong>Solid Line (-->):</strong> Active Link (Source calls Target to modify state).</p>
@@ -268,13 +270,13 @@ module.exports = async function graph({ rootDir, args = {} }) {
 
         // 3. Generate Mermaid
         console.log("Generating visualization...");
-        let mermaidCode = "graph TD\n";
+        // For large graphs use left-right layout to prevent horizontal squeeze
+        const direction = nodes.length > 6 ? 'LR' : 'TD';
+        let mermaidCode = `%%{init: {'flowchart': {'nodeSpacing': 60, 'rankSpacing': 80}}}%%\ngraph ${direction}\n`;
 
-        // Add Nodes
-        // Format: ID[Name<br/>(ContractId)<br/>Address]
+        // Add Nodes — name only; full details are in the registry table below
         nodes.forEach(n => {
-            const shortAddr = `${n.address.substring(0, 6)}...${n.address.substring(38)}`;
-            mermaidCode += `    N${n.id}["${n.name}<br/>(ID: ${n.id})<br/>${shortAddr}"]\n`;
+            mermaidCode += `    N${n.id}["${n.name}\n#${n.id}"]\n`;
         });
 
         // Add Edges
@@ -287,7 +289,7 @@ module.exports = async function graph({ rootDir, args = {} }) {
         });
 
         // Add ClusterManager
-        mermaidCode += `    Manager[("ClusterManager<br/>${clusterAddress.substring(0, 6)}...")]\n`;
+        mermaidCode += `    Manager[("ClusterManager\n${clusterAddress.substring(0, 6)}...")]\n`;
         mermaidCode += `    style Manager fill:#f9f,stroke:#333,stroke-width:2px\n`;
 
         // Link all nodes to manager (optional, might clutter graph)

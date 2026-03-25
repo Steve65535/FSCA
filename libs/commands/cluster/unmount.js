@@ -12,6 +12,8 @@ const { ethers } = require('ethers');
 
 const chainProvider = require('../../../chain/provider');
 const walletSigner = require('../../../wallet/signer');
+const { sendTx } = require('../txExecutor');
+const { acquireLock } = require('../clusterLock');
 
 const getProvider = chainProvider.getProvider;
 const getSigner = walletSigner.getSigner;
@@ -58,12 +60,12 @@ module.exports = async function unmount({ rootDir, args = {} }) {
 
         console.log(`Unmounting Contract ID: ${id}...`);
 
-        // 1. Send Transaction
-        // function deleteContract(uint32 id)
-        const tx = await cluster.deleteContract(id);
-        console.log(`Transaction sent: ${tx.hash}`);
+        const lock = acquireLock(rootDir, clusterAddr, 'cluster unmount');
+        try {
 
-        await tx.wait();
+        // 1. Send Transaction via txExecutor (retry on transient RPC errors)
+        const receipt = await sendTx(() => cluster.deleteContract(id), { label: `deleteContract id=${id}` });
+        console.log(`Transaction sent: ${receipt.hash}`);
         console.log(`✓ Contract unmounted successfully.`);
 
         // 2. Update Cache
@@ -75,17 +77,25 @@ module.exports = async function unmount({ rootDir, args = {} }) {
         if (targetIndex >= 0) {
             const removedContract = config.fsca.runningcontracts[targetIndex];
 
-            // Add to unmounted
-            // Reset ID since it is deleted from cluster
+            // Add to unmounted — reset contractId since deleted from cluster
             removedContract.contractId = null;
             config.fsca.unmountedcontracts.push(removedContract);
 
             // Remove from running
             config.fsca.runningcontracts.splice(targetIndex, 1);
 
+            // Sync alldeployedcontracts status: mounted -> deployed
+            if (config.fsca.alldeployedcontracts) {
+                const addr = removedContract.address.toLowerCase();
+                config.fsca.alldeployedcontracts = config.fsca.alldeployedcontracts.map(r =>
+                    r.address && r.address.toLowerCase() === addr
+                        ? { ...r, status: 'deployed' }
+                        : r
+                );
+            }
+
             console.log(`✓ Cache updated: Moved ${removedContract.name} (${removedContract.address}) from Running to Unmounted.`);
 
-            // Update currentOperating if needed (optional but helpful)
             if (config.fsca.currentOperating === removedContract.address) {
                 console.log(`  (Note: This contract is still set as currentOperating)`);
             }
@@ -94,6 +104,10 @@ module.exports = async function unmount({ rootDir, args = {} }) {
         }
 
         saveProjectConfig(rootDir, config);
+
+        } finally {
+            lock.release();
+        }
 
     } catch (error) {
         console.error('Failed to unmount:', error.message);
