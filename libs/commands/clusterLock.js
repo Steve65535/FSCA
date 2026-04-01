@@ -1,6 +1,6 @@
 /**
  * 集群级并发锁（基于文件系统）
- * 锁文件：<rootDir>/.fsca-cluster.lock
+ * 锁文件：<rootDir>/.arkheion-cluster.lock
  * 孤儿锁回收：PID 不存在时强制清除
  * 无 TTL — 锁永久有效直到进程主动释放或被孤儿检测清除
  */
@@ -8,7 +8,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const LOCK_FILE = '.fsca-cluster.lock';
+const LOCK_FILE = '.arkheion-cluster.lock';
 
 function lockPath(rootDir) {
     return path.join(rootDir, LOCK_FILE);

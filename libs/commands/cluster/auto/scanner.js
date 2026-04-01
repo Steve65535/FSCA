@@ -1,6 +1,6 @@
 /**
  * 扫描 contracts/ 目录下的 .sol 文件
- * 返回继承自 normalTemplate 且包含 @fsca-auto 注解的合约列表
+ * 返回继承自 normalTemplate 且包含 @arkheion-auto 注解的合约列表
  */
 
 const fs = require('fs');

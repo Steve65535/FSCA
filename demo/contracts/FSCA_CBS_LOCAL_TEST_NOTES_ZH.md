@@ -1,4 +1,4 @@
-# FSCA CBS 本地测试记录
+# Arkheion CBS 本地测试记录
 
 本文记录了在 `/Users/steve/Desktop/Test` 按 Manual Sei CBS 流程回放时发现的问题、根因和修复结果。
 
@@ -6,15 +6,15 @@
 
 本地流程已完整跑通：
 
-1. `fsca deploy --contract AccountStorage`
-2. `fsca deploy --contract TradeEngineV1`
-3. `fsca deploy --contract RiskGuardV1`
+1. `arkheion deploy --contract AccountStorage`
+2. `arkheion deploy --contract TradeEngineV1`
+3. `arkheion deploy --contract RiskGuardV1`
 4. 挂载 `AccountStorage`
 5. 挂载 `RiskGuardV1`
 6. 链接 `TradeEngineV1 -> AccountStorage`
 7. 链接 `TradeEngineV1 -> RiskGuardV1`
 8. 挂载 `TradeEngineV1`
-9. `fsca cluster upgrade --id 2 --contract TradeEngineV2`
+9. `arkheion cluster upgrade --id 2 --contract TradeEngineV2`
 10. 最终验证 `cluster list mounted`、`cluster info 2`、`cluster graph`
 
 ## 发现的问题与原因
@@ -25,7 +25,7 @@
 
 - `AccountStorage.sol`、`TradeEngineV1.sol`、`TradeEngineV2.sol`、`RiskGuardV1.sol`
 - 这些文件仍在引用 `../core/lib/...`
-- 真实 FSCA 工程结构是 `undeployed/lib`、`undeployed/structure`、`undeployed/wallet`
+- 真实 Arkheion 工程结构是 `undeployed/lib`、`undeployed/structure`、`undeployed/wallet`
 
 失败原因：
 
@@ -134,16 +134,16 @@ require(addrToId[targetAddr] == targetId, "target id and addr dismatch");
 对应命令：
 
 ```bash
-fsca cluster choose "$STORAGE"
-fsca cluster mount 1 AccountStorage
+arkheion cluster choose "$STORAGE"
+arkheion cluster mount 1 AccountStorage
 
-fsca cluster choose "$RISK"
-fsca cluster mount 3 RiskGuardV1
+arkheion cluster choose "$RISK"
+arkheion cluster mount 3 RiskGuardV1
 
-fsca cluster choose "$TRADE"
-fsca cluster link positive "$STORAGE" 1
-fsca cluster link positive "$RISK" 3
-fsca cluster mount 2 TradeEngineV1
+arkheion cluster choose "$TRADE"
+arkheion cluster link positive "$STORAGE" 1
+arkheion cluster link positive "$RISK" 3
+arkheion cluster mount 2 TradeEngineV1
 ```
 
 ## 验证后的最终状态

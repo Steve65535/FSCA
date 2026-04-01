@@ -11,7 +11,7 @@ const chainProvider = require('../../../chain/provider');
 function loadProjectConfig(rootDir) {
     const configPath = path.join(rootDir, 'project.json');
     if (!fs.existsSync(configPath)) {
-        throw new Error('project.json not found. Please run "fsca init" first.');
+        throw new Error('project.json not found. Please run "arkheion init" first.');
     }
     return JSON.parse(fs.readFileSync(configPath, 'utf-8'));
 }
@@ -45,7 +45,7 @@ module.exports = async function info({ rootDir, args = {} }) {
         // 1. Load config
         const config = loadProjectConfig(rootDir);
 
-        const multiSigAddress = config.fsca?.multisigAddress || config.fsca?.multiSigAddress;
+        const multiSigAddress = config.arkheion?.multisigAddress || config.arkheion?.multiSigAddress;
         if (!multiSigAddress || multiSigAddress === '0x') {
             throw new Error('MultiSig wallet address not found in project.json.');
         }
@@ -96,11 +96,11 @@ module.exports = async function info({ rootDir, args = {} }) {
         if (!tx.executed) {
             if (validConfirmations >= threshold) {
                 console.log(`${logger.COLORS.brightGreen}✓ Ready to execute!${logger.COLORS.reset}`);
-                console.log(`  Run: ${logger.COLORS.brightBlue}fsca wallet execute ${txIndex}${logger.COLORS.reset}`);
+                console.log(`  Run: ${logger.COLORS.brightBlue}arkheion wallet execute ${txIndex}${logger.COLORS.reset}`);
             } else {
                 const remaining = threshold - validConfirmations;
                 console.log(`${logger.COLORS.brightYellow}⏳ Waiting for ${remaining} more confirmation(s)${logger.COLORS.reset}`);
-                console.log(`  Run: ${logger.COLORS.brightBlue}fsca wallet confirm ${txIndex}${logger.COLORS.reset}`);
+                console.log(`  Run: ${logger.COLORS.brightBlue}arkheion wallet confirm ${txIndex}${logger.COLORS.reset}`);
             }
             console.log('');
         }

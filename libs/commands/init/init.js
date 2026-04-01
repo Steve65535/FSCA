@@ -1,5 +1,5 @@
 /**
- * 初始化 FSCA 项目
+ * 初始化 Arkheion 项目
  * 检测并安装 hardhat，初始化项目，创建配置文件
  */
 
@@ -8,7 +8,7 @@ const path = require('path');
 const { execSync } = require('child_process');
 const readline = require('readline');
 const logger = require('../../logger');
-const { attachFileLogger } = require('../../fsca-logger');
+const { attachFileLogger } = require('../../arkheion-logger');
 
 const ASCII_TITLE = `
   ███████╗███████╗ ██████╗ █████╗       ██████╗██╗     ██╗
@@ -178,21 +178,20 @@ function copyDirectory(srcDir, destDir, filterExt = null) {
 }
 
 /**
- * 加载 fsca-core 合约文件到项目
+ * 加载 arkheion-core 合约文件到项目
  * @param {string} rootDir - 项目根目录
  */
-function loadFscaCoreFiles(rootDir) {
-  console.log('Loading FSCA core contracts...');
+function loadArkheionCoreFiles(rootDir) {
+  console.log('Loading Arkheion core contracts...');
 
-  // 获取 fsca-core 的路径（相对于当前文件）
+  // 获取 arkheion-core 的路径（相对于当前文件）
   // init.js 在 libs/commands/init/init.js
-  // fsca-core 在 libs/fsca-core
   const currentFileDir = __dirname; // libs/commands/init
-  const fscaCorePath = path.resolve(currentFileDir, '../../fsca-core');
+  const arkheionCorePath = path.resolve(currentFileDir, '../../arkheion-core');
 
-  if (!fs.existsSync(fscaCorePath)) {
-    console.warn(`Warning: FSCA core directory not found at ${fscaCorePath}`);
-    console.warn('Skipping FSCA core contracts copy.');
+  if (!fs.existsSync(arkheionCorePath)) {
+    console.warn(`Warning: Arkheion core directory not found at ${arkheionCorePath}`);
+    console.warn('Skipping Arkheion core contracts copy.');
     return;
   }
 
@@ -219,10 +218,10 @@ function loadFscaCoreFiles(rootDir) {
 
   // 复制所有 .sol 文件到 undeployed 目录，保持目录结构
   try {
-    copyDirectory(fscaCorePath, undeployedDir, '.sol');
-    console.log('✓ Copied FSCA core contracts to contracts/undeployed');
+  copyDirectory(arkheionCorePath, undeployedDir, '.sol');
+    console.log('✓ Copied Arkheion core contracts to contracts/undeployed');
   } catch (error) {
-    console.error('Failed to copy FSCA core contracts:', error.message);
+    console.error('Failed to copy Arkheion core contracts:', error.message);
     throw error;
   }
 }
@@ -265,7 +264,7 @@ async function promptForConfig(args = {}) {
     console.log('');
     console.log('Please configure the following settings:');
     console.log('(Press Enter to use default values)');
-    console.log('Secrets are recommended via .env (FSCA_PRIVATE_KEY), not project.json');
+    console.log('Secrets are recommended via .env (Arkheion_PRIVATE_KEY), not project.json');
     console.log('');
   }
 
@@ -310,7 +309,7 @@ async function promptForConfig(args = {}) {
     config.accountPrivateKey = args.accountPrivateKey || args.privateKey;
     if (!hasAllArgs) console.log(`Account Private Key: ${config.accountPrivateKey ? '***' : '(empty)'}`);
   } else {
-    config.accountPrivateKey = await promptUser('Account Private Key (optional, prefer FSCA_PRIVATE_KEY in .env)', '');
+    config.accountPrivateKey = await promptUser('Account Private Key (optional, prefer Arkheion_PRIVATE_KEY in .env)', '');
   }
 
   config.unsafeStoreKey = !!args['unsafe-store-key'];
@@ -389,7 +388,7 @@ function createProjectConfig(rootDir, config) {
       timeout: 10000,
       retry: 3
     },
-    fsca: existingConfig.fsca || {
+    arkheion: existingConfig.arkheion || {
       clusterAddress: "0x",
       multisigAddress: "0x",
       multiSigAddress: "0x",
@@ -418,12 +417,12 @@ function createProjectConfig(rootDir, config) {
   console.log('');
   console.log('✓ Created project.json configuration file');
   if (!shouldStorePrivateKey && config.accountPrivateKey) {
-    console.log('✓ Private key was not written to project.json (use FSCA_PRIVATE_KEY in .env)');
+    console.log('✓ Private key was not written to project.json (use Arkheion_PRIVATE_KEY in .env)');
   }
 }
 
 /**
- * Ensure .env exists and contains FSCA variable keys.
+ * Ensure .env exists and contains Arkheion variable keys.
  * Existing values are preserved; only missing keys are appended.
  * @param {string} rootDir - 项目根目录
  * @param {Object} config - 用户输入配置
@@ -435,16 +434,16 @@ function ensureEnvFile(rootDir, config = {}) {
   const hasKey = (key) => lines.some(line => line.trim().startsWith(`${key}=`));
 
   const additions = [];
-  if (!hasKey('FSCA_PRIVATE_KEY')) {
-    additions.push(`FSCA_PRIVATE_KEY=${config.accountPrivateKey || ''}`);
+  if (!hasKey('Arkheion_PRIVATE_KEY')) {
+    additions.push(`Arkheion_PRIVATE_KEY=${config.accountPrivateKey || ''}`);
   }
-  if (!hasKey('FSCA_RPC_URL')) {
-    additions.push(`FSCA_RPC_URL=${config.rpc || ''}`);
+  if (!hasKey('Arkheion_RPC_URL')) {
+    additions.push(`Arkheion_RPC_URL=${config.rpc || ''}`);
   }
 
   if (!fs.existsSync(envPath)) {
     const header = [
-      '# FSCA CLI environment variables',
+      '# Arkheion CLI environment variables',
       '# Keep secrets here, do not commit real keys',
       ''
     ].join('\n');
@@ -454,9 +453,9 @@ function ensureEnvFile(rootDir, config = {}) {
   if (additions.length > 0) {
     const prefix = fs.readFileSync(envPath, 'utf-8').endsWith('\n') ? '' : '\n';
     fs.appendFileSync(envPath, `${prefix}${additions.join('\n')}\n`, 'utf-8');
-    console.log('✓ Updated .env with FSCA variable names');
+    console.log('✓ Updated .env with Arkheion variable names');
   } else {
-    console.log('✓ .env already contains FSCA variable names');
+    console.log('✓ .env already contains Arkheion variable names');
   }
 }
 
@@ -468,7 +467,7 @@ function ensureEnvFile(rootDir, config = {}) {
  */
 module.exports = async function init({ rootDir, args = {} }) {
   printInitTitle();
-  console.log('Initializing FSCA project...');
+  console.log('Initializing Arkheion project...');
   console.log('');
 
   // Create logs/ directory early and attach file logger for init output
@@ -493,8 +492,8 @@ module.exports = async function init({ rootDir, args = {} }) {
     // 3. 初始化 hardhat 项目
     await initHardhat(rootDir);
 
-    // 4. 加载 FSCA core 合约文件
-    loadFscaCoreFiles(rootDir);
+    // 4. 加载 Arkheion core 合约文件
+    loadArkheionCoreFiles(rootDir);
 
     // 5. 引导用户配置基本参数
     const userConfig = await promptForConfig(args);
@@ -505,15 +504,15 @@ module.exports = async function init({ rootDir, args = {} }) {
     ensureEnvFile(rootDir, userConfig);
 
     console.log('');
-    console.log('✓ FSCA project initialized successfully!');
+    console.log('✓ Arkheion project initialized successfully!');
     console.log('');
     console.log('Next steps:');
-    console.log('  1. Put secrets in .env (FSCA_PRIVATE_KEY, optional FSCA_RPC_URL)');
+    console.log('  1. Put secrets in .env (Arkheion_PRIVATE_KEY, optional Arkheion_RPC_URL)');
     console.log('  2. Review and update project.json if needed');
     console.log('  3. Start developing your smart contracts!');
 
   } catch (error) {
-    console.error('Failed to initialize FSCA project:', error.message);
+    console.error('Failed to initialize Arkheion project:', error.message);
     if (process.env.DEBUG) {
       console.error(error.stack);
     }

@@ -9,7 +9,7 @@
  * 7. 更新 project.json 缓存
  *
  * 如果新合约依赖关系不同，使用 --skip-copy-pods 跳过第4步，
- * 之后手动用 "fsca cluster link" 配置新的 pod 关系。
+ * 之后手动用 "arkheion cluster link" 配置新的 pod 关系。
  */
 
 const fs = require('fs');
@@ -51,18 +51,18 @@ const TEMPLATE_ABI = [
 function loadProjectConfig(rootDir) {
     const configPath = path.join(rootDir, 'project.json');
     if (!fs.existsSync(configPath)) {
-        throw new Error('project.json not found. Run "fsca init" first.');
+        throw new Error('project.json not found. Run "arkheion init" first.');
     }
     const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
     const rpcUrl = credentials.resolveRpcUrl(config, rootDir);
     const privateKey = credentials.resolvePrivateKey(config, rootDir);
-    if (!rpcUrl) throw new Error('RPC URL not configured (set FSCA_RPC_URL or network.rpc in project.json)');
-    if (!privateKey) throw new Error('Private key not configured (set FSCA_PRIVATE_KEY or account.privateKey in project.json)');
+    if (!rpcUrl) throw new Error('RPC URL not configured (set Arkheion_RPC_URL or network.rpc in project.json)');
+    if (!privateKey) throw new Error('Private key not configured (set Arkheion_PRIVATE_KEY or account.privateKey in project.json)');
     config.network = config.network || {};
     config.account = config.account || {};
     config.network.rpc = rpcUrl;
     config.account.privateKey = privateKey;
-    if (!config.fsca?.clusterAddress) throw new Error('fsca.clusterAddress not configured. Run "fsca cluster init" first.');
+    if (!config.arkheion?.clusterAddress) throw new Error('arkheion.clusterAddress not configured. Run "arkheion cluster init" first.');
     return config;
 }
 
@@ -110,7 +110,7 @@ module.exports = async function upgrade({ rootDir, args = {} }) {
 
         const config = loadProjectConfig(rootDir);
         const contractId = Number(id);
-        const clusterAddr = config.fsca.clusterAddress;
+        const clusterAddr = config.arkheion.clusterAddress;
 
         // Checkpoint helpers
         const cpPath = path.join(rootDir, 'upgrade-checkpoint.json');
@@ -153,198 +153,198 @@ module.exports = async function upgrade({ rootDir, args = {} }) {
         const lock = acquireLock(rootDir, clusterAddr, 'cluster upgrade');
         try {
 
-        // 1. 读取旧合约注册信息
-        console.log(`[1/6] Fetching contract #${contractId} from registry...`);
-        const existing = await clusterRead.getById(contractId);
-        const oldAddr = existing.contractAddr;
-        const registeredName = existing.name;
-        console.log(`      Name: ${registeredName}`);
-        console.log(`      Old address: ${oldAddr}`);
+            // 1. 读取旧合约注册信息
+            console.log(`[1/6] Fetching contract #${contractId} from registry...`);
+            const existing = await clusterRead.getById(contractId);
+            const oldAddr = existing.contractAddr;
+            const registeredName = existing.name;
+            console.log(`      Name: ${registeredName}`);
+            console.log(`      Old address: ${oldAddr}`);
 
-        // 2. 读取旧合约 pod 配置
-        let activeModules = [];
-        let passiveModules = [];
-        if (!skipCopyPods) {
-            console.log(`[2/6] Reading pod configuration from old contract...`);
-            const oldContract = new ethers.Contract(oldAddr, TEMPLATE_ABI, provider);
-            activeModules = await oldContract.getAllActiveModules();
-            passiveModules = await oldContract.getAllPassiveModules();
-            console.log(`      Active pods: ${activeModules.length}  Passive pods: ${passiveModules.length}`);
-        } else {
-            console.log(`[2/6] Skipping pod copy (--skip-copy-pods). Configure manually after upgrade.`);
-        }
-
-        // 3. 编译 + 部署新合约
-        console.log(`[3/6] Compiling and deploying ${contractName}...`);
-        let newAddr = cpState.newAddr || null;
-        if (!completedSteps.has('deploy')) {
-            const artifactsDir = path.join(rootDir, 'artifacts');
-            if (!fs.existsSync(artifactsDir)) {
-                console.log('      Artifacts not found, compiling...');
-                execSync('npx hardhat compile', { cwd: rootDir, stdio: 'inherit' });
+            // 2. 读取旧合约 pod 配置
+            let activeModules = [];
+            let passiveModules = [];
+            if (!skipCopyPods) {
+                console.log(`[2/6] Reading pod configuration from old contract...`);
+                const oldContract = new ethers.Contract(oldAddr, TEMPLATE_ABI, provider);
+                activeModules = await oldContract.getAllActiveModules();
+                passiveModules = await oldContract.getAllPassiveModules();
+                console.log(`      Active pods: ${activeModules.length}  Passive pods: ${passiveModules.length}`);
+            } else {
+                console.log(`[2/6] Skipping pod copy (--skip-copy-pods). Configure manually after upgrade.`);
             }
-            // Conflict check
-            const { hits, conflict } = scanContractConflicts(rootDir, contractName);
-            if (conflict) failOnConflict(contractName, hits);
-            const allConflicts = scanAllConflicts(rootDir);
-            const { idConflicts } = scanIdConflicts(rootDir);
-            failOnAllConflicts({ ...allConflicts, idConflicts });
-            const artifact = loadArtifact(rootDir, contractName);
-            const constructorArgs = buildConstructorArgs(artifact, clusterAddr, registeredName);
-            newAddr = await deployContract(signer, artifact.abi, artifact.bytecode, constructorArgs);
-            completedSteps.add('deploy');
-            writeCheckpoint({ clusterAddress: clusterAddr, contractId, completedSteps: [...completedSteps], state: { newAddr } });
-        } else {
-            console.log(`  ↩ skip deploy (already done): ${newAddr}`);
-        }
-        console.log(`      Deployed at: ${newAddr}`);
 
-        // 4. 将旧合约 pod 配置写入新合约（BeforeMount，此时 whetherMounted=0）
-        if (!skipCopyPods && (activeModules.length > 0 || passiveModules.length > 0)) {
-            console.log(`[4/6] Copying pod configuration to new contract...`);
-            for (const mod of activeModules) {
-                const stepKey = `pod-copy:active:${mod.contractId}`;
-                if (completedSteps.has(stepKey)) { console.log(`  ↩ skip ${stepKey}`); continue; }
-                await sendTx(() => clusterWrite.addActivePodBeforeMount(newAddr, mod.moduleAddress, mod.contractId), { label: stepKey });
-                console.log(`      Active  id=${mod.contractId}  ${mod.moduleAddress}`);
-                completedSteps.add(stepKey);
+            // 3. 编译 + 部署新合约
+            console.log(`[3/6] Compiling and deploying ${contractName}...`);
+            let newAddr = cpState.newAddr || null;
+            if (!completedSteps.has('deploy')) {
+                const artifactsDir = path.join(rootDir, 'artifacts');
+                if (!fs.existsSync(artifactsDir)) {
+                    console.log('      Artifacts not found, compiling...');
+                    execSync('npx hardhat compile', { cwd: rootDir, stdio: 'inherit' });
+                }
+                // Conflict check
+                const { hits, conflict } = scanContractConflicts(rootDir, contractName);
+                if (conflict) failOnConflict(contractName, hits);
+                const allConflicts = scanAllConflicts(rootDir);
+                const { idConflicts } = scanIdConflicts(rootDir);
+                failOnAllConflicts({ ...allConflicts, idConflicts });
+                const artifact = loadArtifact(rootDir, contractName);
+                const constructorArgs = buildConstructorArgs(artifact, clusterAddr, registeredName);
+                newAddr = await deployContract(signer, artifact.abi, artifact.bytecode, constructorArgs);
+                completedSteps.add('deploy');
                 writeCheckpoint({ clusterAddress: clusterAddr, contractId, completedSteps: [...completedSteps], state: { newAddr } });
+            } else {
+                console.log(`  ↩ skip deploy (already done): ${newAddr}`);
             }
-            for (const mod of passiveModules) {
-                const stepKey = `pod-copy:passive:${mod.contractId}`;
-                if (completedSteps.has(stepKey)) { console.log(`  ↩ skip ${stepKey}`); continue; }
-                await sendTx(() => clusterWrite.addPassivePodBeforeMount(newAddr, mod.moduleAddress, mod.contractId), { label: stepKey });
-                console.log(`      Passive id=${mod.contractId}  ${mod.moduleAddress}`);
-                completedSteps.add(stepKey);
+            console.log(`      Deployed at: ${newAddr}`);
+
+            // 4. 将旧合约 pod 配置写入新合约（BeforeMount，此时 whetherMounted=0）
+            if (!skipCopyPods && (activeModules.length > 0 || passiveModules.length > 0)) {
+                console.log(`[4/6] Copying pod configuration to new contract...`);
+                for (const mod of activeModules) {
+                    const stepKey = `pod-copy:active:${mod.contractId}`;
+                    if (completedSteps.has(stepKey)) { console.log(`  ↩ skip ${stepKey}`); continue; }
+                    await sendTx(() => clusterWrite.addActivePodBeforeMount(newAddr, mod.moduleAddress, mod.contractId), { label: stepKey });
+                    console.log(`      Active  id=${mod.contractId}  ${mod.moduleAddress}`);
+                    completedSteps.add(stepKey);
+                    writeCheckpoint({ clusterAddress: clusterAddr, contractId, completedSteps: [...completedSteps], state: { newAddr } });
+                }
+                for (const mod of passiveModules) {
+                    const stepKey = `pod-copy:passive:${mod.contractId}`;
+                    if (completedSteps.has(stepKey)) { console.log(`  ↩ skip ${stepKey}`); continue; }
+                    await sendTx(() => clusterWrite.addPassivePodBeforeMount(newAddr, mod.moduleAddress, mod.contractId), { label: stepKey });
+                    console.log(`      Passive id=${mod.contractId}  ${mod.moduleAddress}`);
+                    completedSteps.add(stepKey);
+                    writeCheckpoint({ clusterAddress: clusterAddr, contractId, completedSteps: [...completedSteps], state: { newAddr } });
+                }
+            } else {
+                console.log(`[4/6] No pods to configure.`);
+            }
+
+            // 5. 卸载旧合约
+            console.log(`[5/6] Unmounting old contract #${contractId}...`);
+            if (!completedSteps.has('delete')) {
+                await sendTx(() => clusterWrite.deleteContract(contractId), { label: `deleteContract #${contractId}` });
+                completedSteps.add('delete');
                 writeCheckpoint({ clusterAddress: clusterAddr, contractId, completedSteps: [...completedSteps], state: { newAddr } });
+            } else {
+                console.log(`  ↩ skip delete (already done)`);
             }
-        } else {
-            console.log(`[4/6] No pods to configure.`);
-        }
+            console.log(`      Unmounted: ${oldAddr}`);
 
-        // 5. 卸载旧合约
-        console.log(`[5/6] Unmounting old contract #${contractId}...`);
-        if (!completedSteps.has('delete')) {
-            await sendTx(() => clusterWrite.deleteContract(contractId), { label: `deleteContract #${contractId}` });
-            completedSteps.add('delete');
-            writeCheckpoint({ clusterAddress: clusterAddr, contractId, completedSteps: [...completedSteps], state: { newAddr } });
-        } else {
-            console.log(`  ↩ skip delete (already done)`);
-        }
-        console.log(`      Unmounted: ${oldAddr}`);
-
-        // 6. 注册新合约
-        console.log(`[6/6] Registering new contract...`);
-        if (!completedSteps.has('register')) {
-            await sendTx(() => clusterWrite.registerContract(contractId, registeredName, newAddr), { label: `registerContract #${contractId}` });
-            completedSteps.add('register');
-            writeCheckpoint({ clusterAddress: clusterAddr, contractId, completedSteps: [...completedSteps], state: { newAddr } });
-        } else {
-            console.log(`  ↩ skip register (already done)`);
-        }
-        console.log(`      Mounted: ${newAddr}`);
-
-        // 更新 project.json
-        const timestamp = Math.floor(Date.now() / 1000);
-        if (!config.fsca.alldeployedcontracts) config.fsca.alldeployedcontracts = [];
-
-        const podSnapshot = {
-            active: activeModules.map(m => ({ contractId: Number(m.contractId) })),
-            passive: passiveModules.map(m => ({ contractId: Number(m.contractId) })),
-        };
-
-        config.fsca.alldeployedcontracts = config.fsca.alldeployedcontracts.map(r => {
-            if (r.address && r.address.toLowerCase() === oldAddr.toLowerCase()) {
-                return { ...r, status: 'deprecated', podSnapshot };
+            // 6. 注册新合约
+            console.log(`[6/6] Registering new contract...`);
+            if (!completedSteps.has('register')) {
+                await sendTx(() => clusterWrite.registerContract(contractId, registeredName, newAddr), { label: `registerContract #${contractId}` });
+                completedSteps.add('register');
+                writeCheckpoint({ clusterAddress: clusterAddr, contractId, completedSteps: [...completedSteps], state: { newAddr } });
+            } else {
+                console.log(`  ↩ skip register (already done)`);
             }
-            return r;
-        });
+            console.log(`      Mounted: ${newAddr}`);
 
-        const newGen = nextGeneration(config.fsca.alldeployedcontracts, contractId);
-        const newSeq = nextDeploySeq(config.fsca.alldeployedcontracts);
-        config.fsca.alldeployedcontracts.push({
-            name: registeredName,
-            address: newAddr,
-            contractId,
-            generation: newGen,
-            deploySeq: newSeq,
-            status: 'mounted',
-            timeStamp: timestamp,
-            upgradedFrom: oldAddr,
-            deployTx: null,
-            podSnapshot: { active: [], passive: [] },
-        });
+            // 更新 project.json
+            const timestamp = Math.floor(Date.now() / 1000);
+            if (!config.arkheion.alldeployedcontracts) config.arkheion.alldeployedcontracts = [];
 
-        if (config.fsca.unmountedcontracts) {
-            config.fsca.unmountedcontracts = config.fsca.unmountedcontracts.filter(c => c.address !== oldAddr);
-        }
-        if (!config.fsca.runningcontracts) config.fsca.runningcontracts = [];
-        config.fsca.runningcontracts = config.fsca.runningcontracts.filter(
-            c => c.address && c.address.toLowerCase() !== oldAddr.toLowerCase()
-        );
-        config.fsca.runningcontracts.push({ name: registeredName, address: newAddr, contractId, timeStamp: timestamp });
-
-        config.fsca.currentOperating = newAddr;
-        saveProjectConfig(rootDir, config);
-        console.log('      Updated project.json');
-
-        // Snapshot sync: read live pod state for new contract from chain
-        try {
-            const newContract = new ethers.Contract(newAddr, TEMPLATE_ABI, provider);
-            const [newActiveModules, newPassiveModules] = await Promise.all([
-                newContract.getAllActiveModules(),
-                newContract.getAllPassiveModules(),
-            ]);
-            const newPodSnapshot = {
-                active: newActiveModules.map(m => ({ contractId: Number(m.contractId) })),
-                passive: newPassiveModules.map(m => ({ contractId: Number(m.contractId) })),
+            const podSnapshot = {
+                active: activeModules.map(m => ({ contractId: Number(m.contractId) })),
+                passive: passiveModules.map(m => ({ contractId: Number(m.contractId) })),
             };
-            config.fsca.alldeployedcontracts = config.fsca.alldeployedcontracts.map(r =>
-                r.address && r.address.toLowerCase() === newAddr.toLowerCase()
-                    ? { ...r, podSnapshot: newPodSnapshot }
-                    : r
-            );
-            saveProjectConfig(rootDir, config);
-            console.log(`      Pod snapshot: active=[${newPodSnapshot.active.map(p => p.contractId).join(',')}] passive=[${newPodSnapshot.passive.map(p => p.contractId).join(',')}]`);
-        } catch (e) {
-            throw new Error(`Upgrade already changed on-chain, but new contract pod snapshot sync failed: ${e.message}`);
-        }
 
-        deleteCheckpoint();
-
-        // Cleanup new contract's source/artifacts
-        const cleanupMode = resolveCleanupMode(args, config);
-        if (cleanupMode !== 'keep') {
-            const sourcePath = findSourceFile(rootDir, contractName);
-            const artifactPath = findArtifactFile(rootDir, contractName);
-            const cleanupResult = performCleanup({
-                mode: cleanupMode,
-                files: [{ sourcePath, artifactPath, contractName }],
-                rootDir,
+            config.arkheion.alldeployedcontracts = config.arkheion.alldeployedcontracts.map(r => {
+                if (r.address && r.address.toLowerCase() === oldAddr.toLowerCase()) {
+                    return { ...r, status: 'deprecated', podSnapshot };
+                }
+                return r;
             });
-            for (const action of cleanupResult.actions) {
-                if (action.status === 'ok') console.log(`      Cleanup [${cleanupMode}]: ${action.fileType} ${action.action}`);
-                else if (action.status === 'skipped') console.log(`      Cleanup: ${action.fileType} skipped`);
-                else console.warn(`      ⚠  Cleanup error (${action.fileType}): ${action.error}`);
-            }
-            if (cleanupResult.errors.length > 0) {
-                const reportPath = require('path').join(rootDir, 'cleanup-report.json');
-                require('fs').writeFileSync(reportPath, JSON.stringify({
-                    timestamp: new Date().toISOString(),
-                    mode: cleanupMode,
-                    actions: cleanupResult.actions,
-                    errors: cleanupResult.errors,
-                }, null, 2), 'utf-8');
-            }
-        }
 
-        console.log('');
-        console.log(`✓ Hot swap complete: ${registeredName} #${contractId}`);
-        console.log(`  Old: ${oldAddr}`);
-        console.log(`  New: ${newAddr}`);
-        if (skipCopyPods) {
-            console.log(`  Note: pods not copied. Use "fsca cluster link" to configure.`);
-        }
+            const newGen = nextGeneration(config.arkheion.alldeployedcontracts, contractId);
+            const newSeq = nextDeploySeq(config.arkheion.alldeployedcontracts);
+            config.arkheion.alldeployedcontracts.push({
+                name: registeredName,
+                address: newAddr,
+                contractId,
+                generation: newGen,
+                deploySeq: newSeq,
+                status: 'mounted',
+                timeStamp: timestamp,
+                upgradedFrom: oldAddr,
+                deployTx: null,
+                podSnapshot: { active: [], passive: [] },
+            });
+
+            if (config.arkheion.unmountedcontracts) {
+                config.arkheion.unmountedcontracts = config.arkheion.unmountedcontracts.filter(c => c.address !== oldAddr);
+            }
+            if (!config.arkheion.runningcontracts) config.arkheion.runningcontracts = [];
+            config.arkheion.runningcontracts = config.arkheion.runningcontracts.filter(
+                c => c.address && c.address.toLowerCase() !== oldAddr.toLowerCase()
+            );
+            config.arkheion.runningcontracts.push({ name: registeredName, address: newAddr, contractId, timeStamp: timestamp });
+
+            config.arkheion.currentOperating = newAddr;
+            saveProjectConfig(rootDir, config);
+            console.log('      Updated project.json');
+
+            // Snapshot sync: read live pod state for new contract from chain
+            try {
+                const newContract = new ethers.Contract(newAddr, TEMPLATE_ABI, provider);
+                const [newActiveModules, newPassiveModules] = await Promise.all([
+                    newContract.getAllActiveModules(),
+                    newContract.getAllPassiveModules(),
+                ]);
+                const newPodSnapshot = {
+                    active: newActiveModules.map(m => ({ contractId: Number(m.contractId) })),
+                    passive: newPassiveModules.map(m => ({ contractId: Number(m.contractId) })),
+                };
+                config.arkheion.alldeployedcontracts = config.arkheion.alldeployedcontracts.map(r =>
+                    r.address && r.address.toLowerCase() === newAddr.toLowerCase()
+                        ? { ...r, podSnapshot: newPodSnapshot }
+                        : r
+                );
+                saveProjectConfig(rootDir, config);
+                console.log(`      Pod snapshot: active=[${newPodSnapshot.active.map(p => p.contractId).join(',')}] passive=[${newPodSnapshot.passive.map(p => p.contractId).join(',')}]`);
+            } catch (e) {
+                throw new Error(`Upgrade already changed on-chain, but new contract pod snapshot sync failed: ${e.message}`);
+            }
+
+            deleteCheckpoint();
+
+            // Cleanup new contract's source/artifacts
+            const cleanupMode = resolveCleanupMode(args, config);
+            if (cleanupMode !== 'keep') {
+                const sourcePath = findSourceFile(rootDir, contractName);
+                const artifactPath = findArtifactFile(rootDir, contractName);
+                const cleanupResult = performCleanup({
+                    mode: cleanupMode,
+                    files: [{ sourcePath, artifactPath, contractName }],
+                    rootDir,
+                });
+                for (const action of cleanupResult.actions) {
+                    if (action.status === 'ok') console.log(`      Cleanup [${cleanupMode}]: ${action.fileType} ${action.action}`);
+                    else if (action.status === 'skipped') console.log(`      Cleanup: ${action.fileType} skipped`);
+                    else console.warn(`      ⚠  Cleanup error (${action.fileType}): ${action.error}`);
+                }
+                if (cleanupResult.errors.length > 0) {
+                    const reportPath = require('path').join(rootDir, 'cleanup-report.json');
+                    require('fs').writeFileSync(reportPath, JSON.stringify({
+                        timestamp: new Date().toISOString(),
+                        mode: cleanupMode,
+                        actions: cleanupResult.actions,
+                        errors: cleanupResult.errors,
+                    }, null, 2), 'utf-8');
+                }
+            }
+
+            console.log('');
+            console.log(`✓ Hot swap complete: ${registeredName} #${contractId}`);
+            console.log(`  Old: ${oldAddr}`);
+            console.log(`  New: ${newAddr}`);
+            if (skipCopyPods) {
+                console.log(`  Note: pods not copied. Use "arkheion cluster link" to configure.`);
+            }
 
         } finally {
             lock.release();

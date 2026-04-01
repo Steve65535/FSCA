@@ -4,7 +4,7 @@ const os = require('os');
 const ethers = require('ethers');
 
 function makeTmpDir() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'fsca-readonly-test-'));
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'arkheion-readonly-test-'));
 }
 
 function writeProjectJson(dir, data) {
@@ -27,7 +27,7 @@ function baseProject() {
   return {
     network: { rpc: 'http://127.0.0.1:8545' },
     account: { privateKey: '0x' + 'a'.repeat(64) },
-    fsca: {
+    arkheion: {
       clusterAddress: '0x' + '1'.repeat(40),
       currentOperating: '0x' + 'b'.repeat(40),
       runningcontracts: [
@@ -59,9 +59,9 @@ jest.mock('../../wallet/credentials', () => ({
 
 beforeEach(() => {
   jest.clearAllMocks();
-  jest.spyOn(console, 'log').mockImplementation(() => {});
-  jest.spyOn(console, 'warn').mockImplementation(() => {});
-  jest.spyOn(console, 'error').mockImplementation(() => {});
+  jest.spyOn(console, 'log').mockImplementation(() => { });
+  jest.spyOn(console, 'warn').mockImplementation(() => { });
+  jest.spyOn(console, 'error').mockImplementation(() => { });
   jest.spyOn(process, 'exit').mockImplementation((code) => {
     throw new Error(`process.exit:${code}`);
   });

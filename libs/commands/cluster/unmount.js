@@ -1,6 +1,6 @@
 /**
  * 卸载合约 (Unmount)
- * 命令: fsca cluster unmount <id>
+ * 命令: arkheion cluster unmount <id>
  * 操作:
  *  1. 调用 ClusterManager.deleteContract(id)
  *  2. 更新 project.json 缓存 (移动 running -> unmounted)
@@ -54,7 +54,7 @@ module.exports = async function unmount({ rootDir, args = {} }) {
         // Connect
         const provider = getProvider(config.network.rpc);
         const signer = getSigner(config.account.privateKey, provider);
-        const clusterAddr = config.fsca.clusterAddress;
+        const clusterAddr = config.arkheion.clusterAddress;
         const abi = loadClusterManagerABI(rootDir);
         const cluster = new ethers.Contract(clusterAddr, abi, signer);
 
@@ -63,47 +63,47 @@ module.exports = async function unmount({ rootDir, args = {} }) {
         const lock = acquireLock(rootDir, clusterAddr, 'cluster unmount');
         try {
 
-        // 1. Send Transaction via txExecutor (retry on transient RPC errors)
-        const receipt = await sendTx(() => cluster.deleteContract(id), { label: `deleteContract id=${id}` });
-        console.log(`Transaction sent: ${receipt.hash}`);
-        console.log(`✓ Contract unmounted successfully.`);
+            // 1. Send Transaction via txExecutor (retry on transient RPC errors)
+            const receipt = await sendTx(() => cluster.deleteContract(id), { label: `deleteContract id=${id}` });
+            console.log(`Transaction sent: ${receipt.hash}`);
+            console.log(`✓ Contract unmounted successfully.`);
 
-        // 2. Update Cache
-        if (!config.fsca.runningcontracts) config.fsca.runningcontracts = [];
-        if (!config.fsca.unmountedcontracts) config.fsca.unmountedcontracts = [];
+            // 2. Update Cache
+            if (!config.arkheion.runningcontracts) config.arkheion.runningcontracts = [];
+            if (!config.arkheion.unmountedcontracts) config.arkheion.unmountedcontracts = [];
 
-        // Find the contract in running list
-        const targetIndex = config.fsca.runningcontracts.findIndex(c => c.contractId == id);
-        if (targetIndex >= 0) {
-            const removedContract = config.fsca.runningcontracts[targetIndex];
+            // Find the contract in running list
+            const targetIndex = config.arkheion.runningcontracts.findIndex(c => c.contractId == id);
+            if (targetIndex >= 0) {
+                const removedContract = config.arkheion.runningcontracts[targetIndex];
 
-            // Add to unmounted — reset contractId since deleted from cluster
-            removedContract.contractId = null;
-            config.fsca.unmountedcontracts.push(removedContract);
+                // Add to unmounted — reset contractId since deleted from cluster
+                removedContract.contractId = null;
+                config.arkheion.unmountedcontracts.push(removedContract);
 
-            // Remove from running
-            config.fsca.runningcontracts.splice(targetIndex, 1);
+                // Remove from running
+                config.arkheion.runningcontracts.splice(targetIndex, 1);
 
-            // Sync alldeployedcontracts status: mounted -> deployed
-            if (config.fsca.alldeployedcontracts) {
-                const addr = removedContract.address.toLowerCase();
-                config.fsca.alldeployedcontracts = config.fsca.alldeployedcontracts.map(r =>
-                    r.address && r.address.toLowerCase() === addr
-                        ? { ...r, status: 'deployed' }
-                        : r
-                );
+                // Sync alldeployedcontracts status: mounted -> deployed
+                if (config.arkheion.alldeployedcontracts) {
+                    const addr = removedContract.address.toLowerCase();
+                    config.arkheion.alldeployedcontracts = config.arkheion.alldeployedcontracts.map(r =>
+                        r.address && r.address.toLowerCase() === addr
+                            ? { ...r, status: 'deployed' }
+                            : r
+                    );
+                }
+
+                console.log(`✓ Cache updated: Moved ${removedContract.name} (${removedContract.address}) from Running to Unmounted.`);
+
+                if (config.arkheion.currentOperating === removedContract.address) {
+                    console.log(`  (Note: This contract is still set as currentOperating)`);
+                }
+            } else {
+                console.warn(`! Contract ID ${id} unmounted on chain, but not found in local 'runningcontracts' cache.`);
             }
 
-            console.log(`✓ Cache updated: Moved ${removedContract.name} (${removedContract.address}) from Running to Unmounted.`);
-
-            if (config.fsca.currentOperating === removedContract.address) {
-                console.log(`  (Note: This contract is still set as currentOperating)`);
-            }
-        } else {
-            console.warn(`! Contract ID ${id} unmounted on chain, but not found in local 'runningcontracts' cache.`);
-        }
-
-        saveProjectConfig(rootDir, config);
+            saveProjectConfig(rootDir, config);
 
         } finally {
             lock.release();

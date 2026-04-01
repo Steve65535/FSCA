@@ -1,4 +1,4 @@
-# FSCA CBS Local Test Notes
+# Arkheion CBS Local Test Notes
 
 This document records the issues found while replaying the Manual Sei CBS flow in `/Users/steve/Desktop/Test`, the root causes, and the fixes applied.
 
@@ -6,15 +6,15 @@ This document records the issues found while replaying the Manual Sei CBS flow i
 
 The local test flow was completed successfully:
 
-1. `fsca deploy --contract AccountStorage`
-2. `fsca deploy --contract TradeEngineV1`
-3. `fsca deploy --contract RiskGuardV1`
+1. `arkheion deploy --contract AccountStorage`
+2. `arkheion deploy --contract TradeEngineV1`
+3. `arkheion deploy --contract RiskGuardV1`
 4. Mount `AccountStorage`
 5. Mount `RiskGuardV1`
 6. Link `TradeEngineV1 -> AccountStorage`
 7. Link `TradeEngineV1 -> RiskGuardV1`
 8. Mount `TradeEngineV1`
-9. `fsca cluster upgrade --id 2 --contract TradeEngineV2`
+9. `arkheion cluster upgrade --id 2 --contract TradeEngineV2`
 10. Final `cluster list mounted`, `cluster info 2`, `cluster graph`
 
 ## Issues Found And Why
@@ -25,7 +25,7 @@ Problem:
 
 - `AccountStorage.sol`, `TradeEngineV1.sol`, `TradeEngineV2.sol`, `RiskGuardV1.sol`
 - These files were importing `../core/lib/...`
-- Real FSCA project layout uses `undeployed/lib`, `undeployed/structure`, `undeployed/wallet`
+- Real Arkheion project layout uses `undeployed/lib`, `undeployed/structure`, `undeployed/wallet`
 
 Why it failed:
 
@@ -134,16 +134,16 @@ The real working order in `Test` is:
 In concrete commands:
 
 ```bash
-fsca cluster choose "$STORAGE"
-fsca cluster mount 1 AccountStorage
+arkheion cluster choose "$STORAGE"
+arkheion cluster mount 1 AccountStorage
 
-fsca cluster choose "$RISK"
-fsca cluster mount 3 RiskGuardV1
+arkheion cluster choose "$RISK"
+arkheion cluster mount 3 RiskGuardV1
 
-fsca cluster choose "$TRADE"
-fsca cluster link positive "$STORAGE" 1
-fsca cluster link positive "$RISK" 3
-fsca cluster mount 2 TradeEngineV1
+arkheion cluster choose "$TRADE"
+arkheion cluster link positive "$STORAGE" 1
+arkheion cluster link positive "$RISK" 3
+arkheion cluster mount 2 TradeEngineV1
 ```
 
 ## Verified End State

@@ -63,9 +63,9 @@ function loadNormalTemplateABI(rootDir) {
 
 module.exports = async function link({ rootDir, args = {} }) {
     try {
-        const rawType       = args.type          || args.arg0;
-        const targetAddress = args.targetAddress  || args.arg1;
-        const targetId      = args.targetId       || args.arg2;
+        const rawType = args.type || args.arg0;
+        const targetAddress = args.targetAddress || args.arg1;
+        const targetId = args.targetId || args.arg2;
         const type = rawType === 'active' ? 'positive' : rawType;
         const displayType = type === 'positive' ? 'active' : type;
 
@@ -78,7 +78,7 @@ module.exports = async function link({ rootDir, args = {} }) {
         const tId = Number(targetId);
 
         const config = loadProjectConfig(rootDir);
-        const currentOperating = config.fsca?.currentOperating;
+        const currentOperating = config.arkheion?.currentOperating;
 
         if (!currentOperating) {
             throw new Error("No current operating contract selected.");
@@ -103,67 +103,67 @@ module.exports = async function link({ rootDir, args = {} }) {
         console.log(`  State: ${isMounted == 1 ? 'MOUNTED' : 'UNMOUNTED'}`);
         console.log(`  Target: ${targetAddress} (ID: ${tId})`);
 
-        const clusterAddr = config.fsca.clusterAddress;
+        const clusterAddr = config.arkheion.clusterAddress;
         const clusterAbi = loadClusterManagerABI(rootDir);
         const clusterContract = new ethers.Contract(clusterAddr, clusterAbi, signer);
 
         const lock = acquireLock(rootDir, clusterAddr, 'cluster link');
         try {
 
-        const label = `${isMounted == 0 ? 'BeforeMount' : 'AfterMount'}:${displayType}:${tId}`;
-        let receipt;
-        if (isMounted == 0) {
-            if (type === 'positive') {
-                receipt = await sendTx(() => clusterContract.addActivePodBeforeMount(currentOperating, targetAddress, tId), { label });
+            const label = `${isMounted == 0 ? 'BeforeMount' : 'AfterMount'}:${displayType}:${tId}`;
+            let receipt;
+            if (isMounted == 0) {
+                if (type === 'positive') {
+                    receipt = await sendTx(() => clusterContract.addActivePodBeforeMount(currentOperating, targetAddress, tId), { label });
+                } else {
+                    receipt = await sendTx(() => clusterContract.addPassivePodBeforeMount(currentOperating, targetAddress, tId), { label });
+                }
             } else {
-                receipt = await sendTx(() => clusterContract.addPassivePodBeforeMount(currentOperating, targetAddress, tId), { label });
+                if (type === 'positive') {
+                    receipt = await sendTx(() => clusterContract.addActivePodAfterMount(currentOperating, targetAddress, tId), { label });
+                } else {
+                    receipt = await sendTx(() => clusterContract.addPassivePodAfterMount(currentOperating, targetAddress, tId), { label });
+                }
             }
-        } else {
-            if (type === 'positive') {
-                receipt = await sendTx(() => clusterContract.addActivePodAfterMount(currentOperating, targetAddress, tId), { label });
-            } else {
-                receipt = await sendTx(() => clusterContract.addPassivePodAfterMount(currentOperating, targetAddress, tId), { label });
+
+            console.log(`✓ Transaction confirmed in block ${receipt.blockNumber}`);
+
+            // Snapshot sync: read live pod state from chain and update project.json
+            try {
+                const contract = new ethers.Contract(currentOperating, TEMPLATE_ALL_ABI, provider);
+                const [activeModules, passiveModules] = await Promise.all([
+                    contract.getAllActiveModules(),
+                    contract.getAllPassiveModules(),
+                ]);
+                const podSnapshot = {
+                    active: activeModules.map(m => ({ contractId: Number(m.contractId) })),
+                    passive: passiveModules.map(m => ({ contractId: Number(m.contractId) })),
+                };
+                config.arkheion.alldeployedcontracts = (config.arkheion.alldeployedcontracts || []).map(r =>
+                    r.address && r.address.toLowerCase() === currentOperating.toLowerCase()
+                        ? { ...r, podSnapshot }
+                        : r
+                );
+                saveProjectConfig(rootDir, config);
+                console.log(`  Pod snapshot: active=[${podSnapshot.active.map(p => p.contractId).join(',')}] passive=[${podSnapshot.passive.map(p => p.contractId).join(',')}]`);
+            } catch (e) {
+                throw new Error(`Link already changed on-chain, but pod snapshot sync failed: ${e.message}`);
             }
-        }
 
-        console.log(`✓ Transaction confirmed in block ${receipt.blockNumber}`);
-
-        // Snapshot sync: read live pod state from chain and update project.json
-        try {
-            const contract = new ethers.Contract(currentOperating, TEMPLATE_ALL_ABI, provider);
-            const [activeModules, passiveModules] = await Promise.all([
-                contract.getAllActiveModules(),
-                contract.getAllPassiveModules(),
-            ]);
-            const podSnapshot = {
-                active: activeModules.map(m => ({ contractId: Number(m.contractId) })),
-                passive: passiveModules.map(m => ({ contractId: Number(m.contractId) })),
-            };
-            config.fsca.alldeployedcontracts = (config.fsca.alldeployedcontracts || []).map(r =>
-                r.address && r.address.toLowerCase() === currentOperating.toLowerCase()
-                    ? { ...r, podSnapshot }
-                    : r
-            );
-            saveProjectConfig(rootDir, config);
-            console.log(`  Pod snapshot: active=[${podSnapshot.active.map(p => p.contractId).join(',')}] passive=[${podSnapshot.passive.map(p => p.contractId).join(',')}]`);
-        } catch (e) {
-            throw new Error(`Link already changed on-chain, but pod snapshot sync failed: ${e.message}`);
-        }
-
-        // Attempt parse logs
-        try {
-            const iface = new ethers.Interface(templateAbi);
-            for (const log of receipt.logs) {
-                try {
-                    const parsed = iface.parseLog(log);
-                    if (parsed && parsed.name === 'ModuleChanged') {
-                        console.log(`  Event: ModuleChanged`);
-                        console.log(`    Action: ${parsed.args[3]}`);
-                        console.log(`    Module: ${parsed.args[2]}`);
-                    }
-                } catch (e) { }
-            }
-        } catch (e) { }
+            // Attempt parse logs
+            try {
+                const iface = new ethers.Interface(templateAbi);
+                for (const log of receipt.logs) {
+                    try {
+                        const parsed = iface.parseLog(log);
+                        if (parsed && parsed.name === 'ModuleChanged') {
+                            console.log(`  Event: ModuleChanged`);
+                            console.log(`    Action: ${parsed.args[3]}`);
+                            console.log(`    Module: ${parsed.args[2]}`);
+                        }
+                    } catch (e) { }
+                }
+            } catch (e) { }
 
         } finally {
             lock.release();

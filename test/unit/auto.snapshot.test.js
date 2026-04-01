@@ -17,7 +17,7 @@ const os = require('os');
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function makeTmpDir() {
-    return fs.mkdtempSync(path.join(os.tmpdir(), 'fsca-snap-test-'));
+    return fs.mkdtempSync(path.join(os.tmpdir(), 'arkheion-snap-test-'));
 }
 
 function writeProjectJson(dir, data) {
@@ -32,7 +32,7 @@ function baseProject(contracts = [], running = []) {
     return {
         network: { name: 'localnet', rpc: 'http://127.0.0.1:8545', chainId: 31337, blockConfirmations: 1 },
         account: { privateKey: '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80', address: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' },
-        fsca: {
+        arkheion: {
             clusterAddress: '0xCluster',
             multisigAddress: '0xMultisig',
             evokerManagerAddress: '0xEvoker',
@@ -79,13 +79,13 @@ jest.mock('../../libs/commands/txExecutor', () => ({
 }));
 
 jest.mock('../../libs/commands/clusterLock', () => ({
-    acquireLock: () => ({ release: () => {} }),
+    acquireLock: () => ({ release: () => { } }),
 }));
 
 jest.mock('../../libs/commands/contractConflicts', () => ({
     scanAllConflicts: () => ({ nameConflicts: [], artifactConflicts: [] }),
     scanIdConflicts: () => ({ idConflicts: [] }),
-    failOnAllConflicts: () => {},
+    failOnAllConflicts: () => { },
 }));
 
 jest.mock('../../libs/commands/cleanup', () => ({
@@ -110,11 +110,11 @@ jest.mock('ethers', () => {
                 }
                 // Default: cluster contract (write ops are no-ops)
                 return {
-                    addActivePodBeforeMount: async () => {},
-                    addPassivePodBeforeMount: async () => {},
-                    addActivePodAfterMount: async () => {},
-                    addPassivePodAfterMount: async () => {},
-                    registerContract: async () => {},
+                    addActivePodBeforeMount: async () => { },
+                    addPassivePodBeforeMount: async () => { },
+                    addActivePodAfterMount: async () => { },
+                    addPassivePodAfterMount: async () => { },
+                    registerContract: async () => { },
                     getById: async (id) => ({ contractId: id, name: '', contractAddr: actual.ethers.ZeroAddress }),
                     getActiveModuleAddress: async () => actual.ethers.ZeroAddress,
                     getPassiveModuleAddress: async () => actual.ethers.ZeroAddress,
@@ -129,11 +129,11 @@ jest.mock('ethers', () => {
                 return mockContractInstances.get(key);
             }
             return {
-                addActivePodBeforeMount: async () => {},
-                addPassivePodBeforeMount: async () => {},
-                addActivePodAfterMount: async () => {},
-                addPassivePodAfterMount: async () => {},
-                registerContract: async () => {},
+                addActivePodBeforeMount: async () => { },
+                addPassivePodBeforeMount: async () => { },
+                addActivePodAfterMount: async () => { },
+                addPassivePodAfterMount: async () => { },
+                registerContract: async () => { },
                 getById: async (id) => ({ contractId: id, name: '', contractAddr: actual.ethers.ZeroAddress }),
                 getActiveModuleAddress: async () => actual.ethers.ZeroAddress,
                 getPassiveModuleAddress: async () => actual.ethers.ZeroAddress,
@@ -175,12 +175,12 @@ const reconcile = require('../../libs/commands/cluster/auto/reconciler');
 
 // ─── Test factory ─────────────────────────────────────────────────────────────
 
-function setupAnalyze({ contractName, fscaId, activePods = [], passivePods = [] }) {
+function setupAnalyze({ contractName, arkheionId, activePods = [], passivePods = [] }) {
     analyze.mockReturnValue({
-        parsed: [{ fscaId, contractName, filePath: '/fake/path.sol', activePods, passivePods }],
-        idToName: new Map([[fscaId, contractName]]),
-        idToContract: new Map([[fscaId, { fscaId, contractName, filePath: '/fake/path.sol', activePods, passivePods }]]),
-        sorted: [fscaId],
+        parsed: [{ arkheionId, contractName, filePath: '/fake/path.sol', activePods, passivePods }],
+        idToName: new Map([[arkheionId, contractName]]),
+        idToContract: new Map([[arkheionId, { arkheionId, contractName, filePath: '/fake/path.sol', activePods, passivePods }]]),
+        sorted: [arkheionId],
         cycleEdges: [],
         podCycles: [],
         funcCycles: [],
@@ -190,12 +190,12 @@ function setupAnalyze({ contractName, fscaId, activePods = [], passivePods = [] 
     });
 }
 
-function setupReconcile(fscaId, contractName, deployedAddr = null) {
+function setupReconcile(arkheionId, contractName, deployedAddr = null) {
     const state = deployedAddr ? 'unmounted' : 'undeployed';
     const actions = deployedAddr ? ['link', 'mount'] : ['deploy', 'link', 'mount'];
     reconcile.mockReturnValue({
         plan: [{
-            fscaId,
+            arkheionId,
             contractName,
             state,
             actions,
@@ -213,9 +213,9 @@ beforeEach(() => {
     mockContractInstances.clear();
     jest.clearAllMocks();
     // suppress console output in tests
-    jest.spyOn(console, 'log').mockImplementation(() => {});
-    jest.spyOn(console, 'warn').mockImplementation(() => {});
-    jest.spyOn(console, 'error').mockImplementation(() => {});
+    jest.spyOn(console, 'log').mockImplementation(() => { });
+    jest.spyOn(console, 'warn').mockImplementation(() => { });
+    jest.spyOn(console, 'error').mockImplementation(() => { });
 });
 
 afterEach(() => {
@@ -230,7 +230,7 @@ describe('auto podSnapshot sync — real auto.js code path', () => {
         ]);
         writeProjectJson(dir, original);
 
-        setupAnalyze({ contractName: 'LendingEngine', fscaId: 210 });
+        setupAnalyze({ contractName: 'LendingEngine', arkheionId: 210 });
         setupReconcile(210, 'LendingEngine', '0xLending');
 
         const before = fs.readFileSync(path.join(dir, 'project.json'), 'utf-8');
@@ -252,16 +252,16 @@ describe('auto podSnapshot sync — real auto.js code path', () => {
             [{ name: 'LendingEngine', address: contractAddr, contractId: null, generation: null, deploySeq: 1, status: 'deployed', timeStamp: 1000, deployTx: null, podSnapshot: { active: [], passive: [] } }],
         ));
 
-        setupAnalyze({ contractName: 'LendingEngine', fscaId: 210 });
+        setupAnalyze({ contractName: 'LendingEngine', arkheionId: 210 });
         setupReconcile(210, 'LendingEngine', contractAddr);
 
         // chain returns real pods for this address
         mockContractInstances.set(contractAddr.toLowerCase(), {
-            addActivePodBeforeMount: async () => {},
-            addPassivePodBeforeMount: async () => {},
-            addActivePodAfterMount: async () => {},
-            addPassivePodAfterMount: async () => {},
-            registerContract: async () => {},
+            addActivePodBeforeMount: async () => { },
+            addPassivePodBeforeMount: async () => { },
+            addActivePodAfterMount: async () => { },
+            addPassivePodAfterMount: async () => { },
+            registerContract: async () => { },
             getById: async () => ({ contractId: 0, name: '', contractAddr: require('ethers').ZeroAddress }),
             getActiveModuleAddress: async () => require('ethers').ZeroAddress,
             getPassiveModuleAddress: async () => require('ethers').ZeroAddress,
@@ -276,11 +276,11 @@ describe('auto podSnapshot sync — real auto.js code path', () => {
 
         // also mock cluster contract
         mockContractInstances.set('0xcluster', {
-            addActivePodBeforeMount: async () => {},
-            addPassivePodBeforeMount: async () => {},
-            addActivePodAfterMount: async () => {},
-            addPassivePodAfterMount: async () => {},
-            registerContract: async () => {},
+            addActivePodBeforeMount: async () => { },
+            addPassivePodBeforeMount: async () => { },
+            addActivePodAfterMount: async () => { },
+            addPassivePodAfterMount: async () => { },
+            registerContract: async () => { },
             getById: async () => ({ contractId: 0, name: '', contractAddr: require('ethers').ZeroAddress }),
             getActiveModuleAddress: async () => require('ethers').ZeroAddress,
             getPassiveModuleAddress: async () => require('ethers').ZeroAddress,
@@ -290,7 +290,7 @@ describe('auto podSnapshot sync — real auto.js code path', () => {
         await auto({ rootDir: dir, args: { yes: true } });
 
         const result = readProjectJson(dir);
-        const record = result.fsca.alldeployedcontracts.find(r => r.address === contractAddr);
+        const record = result.arkheion.alldeployedcontracts.find(r => r.address === contractAddr);
 
         expect(record).toBeDefined();
         expect(record.podSnapshot.active).toEqual([{ contractId: 110 }, { contractId: 111 }]);
@@ -305,13 +305,13 @@ describe('auto podSnapshot sync — real auto.js code path', () => {
             [{ name: 'BrokenContract', address: contractAddr, contractId: null, generation: null, deploySeq: 1, status: 'deployed', timeStamp: 1000, deployTx: null, podSnapshot: { active: [], passive: [] } }],
         ));
 
-        setupAnalyze({ contractName: 'BrokenContract', fscaId: 999 });
+        setupAnalyze({ contractName: 'BrokenContract', arkheionId: 999 });
         setupReconcile(999, 'BrokenContract', contractAddr);
 
         mockContractInstances.set(contractAddr.toLowerCase(), {
-            addActivePodBeforeMount: async () => {},
-            addPassivePodBeforeMount: async () => {},
-            registerContract: async () => {},
+            addActivePodBeforeMount: async () => { },
+            addPassivePodBeforeMount: async () => { },
+            registerContract: async () => { },
             getById: async () => ({ contractId: 0, name: '', contractAddr: require('ethers').ZeroAddress }),
             getActiveModuleAddress: async () => require('ethers').ZeroAddress,
             getPassiveModuleAddress: async () => require('ethers').ZeroAddress,
@@ -320,11 +320,11 @@ describe('auto podSnapshot sync — real auto.js code path', () => {
         });
 
         mockContractInstances.set('0xcluster', {
-            addActivePodBeforeMount: async () => {},
-            addPassivePodBeforeMount: async () => {},
-            addActivePodAfterMount: async () => {},
-            addPassivePodAfterMount: async () => {},
-            registerContract: async () => {},
+            addActivePodBeforeMount: async () => { },
+            addPassivePodBeforeMount: async () => { },
+            addActivePodAfterMount: async () => { },
+            addPassivePodAfterMount: async () => { },
+            registerContract: async () => { },
             getById: async () => ({ contractId: 0, name: '', contractAddr: require('ethers').ZeroAddress }),
             getActiveModuleAddress: async () => require('ethers').ZeroAddress,
             getPassiveModuleAddress: async () => require('ethers').ZeroAddress,
@@ -359,13 +359,13 @@ describe('auto podSnapshot sync — real auto.js code path', () => {
             ],
         ));
 
-        setupAnalyze({ contractName: 'TradeEngine', fscaId: 1 });
+        setupAnalyze({ contractName: 'TradeEngine', arkheionId: 1 });
         setupReconcile(1, 'TradeEngine', newAddr);
 
         mockContractInstances.set(newAddr.toLowerCase(), {
-            addActivePodBeforeMount: async () => {},
-            addPassivePodBeforeMount: async () => {},
-            registerContract: async () => {},
+            addActivePodBeforeMount: async () => { },
+            addPassivePodBeforeMount: async () => { },
+            registerContract: async () => { },
             getById: async () => ({ contractId: 0, name: '', contractAddr: require('ethers').ZeroAddress }),
             getActiveModuleAddress: async () => require('ethers').ZeroAddress,
             getPassiveModuleAddress: async () => require('ethers').ZeroAddress,
@@ -374,11 +374,11 @@ describe('auto podSnapshot sync — real auto.js code path', () => {
         });
 
         mockContractInstances.set('0xcluster', {
-            addActivePodBeforeMount: async () => {},
-            addPassivePodBeforeMount: async () => {},
-            addActivePodAfterMount: async () => {},
-            addPassivePodAfterMount: async () => {},
-            registerContract: async () => {},
+            addActivePodBeforeMount: async () => { },
+            addPassivePodBeforeMount: async () => { },
+            addActivePodAfterMount: async () => { },
+            addPassivePodAfterMount: async () => { },
+            registerContract: async () => { },
             getById: async () => ({ contractId: 0, name: '', contractAddr: require('ethers').ZeroAddress }),
             getActiveModuleAddress: async () => require('ethers').ZeroAddress,
             getPassiveModuleAddress: async () => require('ethers').ZeroAddress,
@@ -388,8 +388,8 @@ describe('auto podSnapshot sync — real auto.js code path', () => {
         await auto({ rootDir: dir, args: { yes: true } });
 
         const result = readProjectJson(dir);
-        const deprecated = result.fsca.alldeployedcontracts.find(r => r.address === oldAddr);
-        const mounted = result.fsca.alldeployedcontracts.find(r => r.address === newAddr);
+        const deprecated = result.arkheion.alldeployedcontracts.find(r => r.address === oldAddr);
+        const mounted = result.arkheion.alldeployedcontracts.find(r => r.address === newAddr);
 
         // deprecated record must be untouched
         expect(deprecated.podSnapshot.active).toEqual([{ contractId: 99 }]);

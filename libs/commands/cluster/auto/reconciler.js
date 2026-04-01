@@ -3,22 +3,22 @@
  */
 
 module.exports = function reconcile(contracts, projectConfig) {
-    const fsca = projectConfig.fsca || {};
-    const running = fsca.runningcontracts || [];
-    const unmounted = fsca.unmountedcontracts || [];
+    const arkheion = projectConfig.arkheion || {};
+    const running = arkheion.runningcontracts || [];
+    const unmounted = arkheion.unmountedcontracts || [];
 
     const results = [];
     const warnings = [];
 
     for (const c of contracts) {
-        const { contractName, fscaId, activePods, passivePods } = c;
+        const { contractName, arkheionId, activePods, passivePods } = c;
 
         // Check if already mounted (match by contractId, guard against null)
-        const mountedEntry = running.find(r => r.contractId != null && Number(r.contractId) === fscaId);
+        const mountedEntry = running.find(r => r.contractId != null && Number(r.contractId) === arkheionId);
         if (mountedEntry) {
-            warnings.push(`Contract "${contractName}" (id=${fscaId}) is already mounted at ${mountedEntry.address}, skipping.`);
+            warnings.push(`Contract "${contractName}" (id=${arkheionId}) is already mounted at ${mountedEntry.address}, skipping.`);
             results.push({
-                contractName, fscaId, activePods, passivePods,
+                contractName, arkheionId, activePods, passivePods,
                 state: 'mounted',
                 existingAddress: mountedEntry.address,
                 actions: [],
@@ -30,7 +30,7 @@ module.exports = function reconcile(contracts, projectConfig) {
         const unmountedEntry = unmounted.find(u => u.name === contractName);
         if (unmountedEntry) {
             results.push({
-                contractName, fscaId, activePods, passivePods,
+                contractName, arkheionId, activePods, passivePods,
                 state: 'unmounted',
                 existingAddress: unmountedEntry.address,
                 actions: ['link', 'mount'],
@@ -40,7 +40,7 @@ module.exports = function reconcile(contracts, projectConfig) {
 
         // Not deployed yet
         results.push({
-            contractName, fscaId, activePods, passivePods,
+            contractName, arkheionId, activePods, passivePods,
             state: 'undeployed',
             existingAddress: null,
             actions: ['deploy', 'link', 'mount'],

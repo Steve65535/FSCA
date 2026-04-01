@@ -9,7 +9,7 @@ const credentials = require('../../../../wallet/credentials');
 
 function loadProjectConfig(rootDir) {
     const configPath = path.join(rootDir, 'project.json');
-    if (!fs.existsSync(configPath)) throw new Error('project.json not found. Run "fsca init" first.');
+    if (!fs.existsSync(configPath)) throw new Error('project.json not found. Run "arkheion init" first.');
     const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
     const rpcUrl = credentials.resolveRpcUrl(config, rootDir);
     const privateKey = credentials.resolvePrivateKey(config, rootDir);
@@ -19,7 +19,7 @@ function loadProjectConfig(rootDir) {
     config.account = config.account || {};
     config.network.rpc = rpcUrl;
     config.account.privateKey = privateKey;
-    if (!config.fsca?.clusterAddress) throw new Error('fsca.clusterAddress not configured. Run "fsca cluster init" first.');
+    if (!config.arkheion?.clusterAddress) throw new Error('arkheion.clusterAddress not configured. Run "arkheion cluster init" first.');
     return config;
 }
 

@@ -13,7 +13,7 @@ const {
 } = require('../../libs/commands/cleanup');
 
 function makeTmpProject(files) {
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fsca-cleanup-test-'));
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'arkheion-cleanup-test-'));
     for (const [relPath, content] of Object.entries(files)) {
         const full = path.join(tmpDir, relPath);
         fs.mkdirSync(path.dirname(full), { recursive: true });
@@ -38,12 +38,12 @@ describe('resolveCleanupMode', () => {
     });
 
     it('CLI arg overrides config', () => {
-        const config = { fsca: { cleanupPolicy: { defaultMode: 'soft' } } };
+        const config = { arkheion: { cleanupPolicy: { defaultMode: 'soft' } } };
         expect(resolveCleanupMode({ cleanup: 'hard' }, config)).toBe('hard');
     });
 
     it('config is used when no CLI arg', () => {
-        const config = { fsca: { cleanupPolicy: { defaultMode: 'soft' } } };
+        const config = { arkheion: { cleanupPolicy: { defaultMode: 'soft' } } };
         expect(resolveCleanupMode({}, config)).toBe('soft');
     });
 
@@ -324,12 +324,12 @@ describe('performCleanup safety', () => {
 
     it('rejects directory symlink pointing outside repo (escape attack)', () => {
         // Create an "outside" directory with a victim file
-        const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'fsca-outside-'));
+        const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'arkheion-outside-'));
         const victimPath = path.join(outside, 'Victim.sol');
         fs.writeFileSync(victimPath, 'contract Victim {}', 'utf-8');
 
         // Create project where contracts/undeployed is a symlink to outside/
-        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fsca-cleanup-test-'));
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'arkheion-cleanup-test-'));
         fs.mkdirSync(path.join(dir, 'contracts'), { recursive: true });
         const undeployedLink = path.join(dir, 'contracts', 'undeployed');
         fs.symlinkSync(outside, undeployedLink);

@@ -1,17 +1,23 @@
 {
-  "name": "fsca-cli",
+  "name": "arkheion-cli",
   "version": "1.0.0",
-  "description": "FSCA CLI - 链上智能合约集群开发工具",
+  "description": "Arkheion CLI - 链上智能合约集群开发工具",
   "main": "cli/index.js",
   "bin": {
-    "fsca": "./cli/index.js"
+    "arkheion": "./cli/index.js"
   },
   "scripts": {
     "test": "jest --testPathPattern=test/ --forceExit",
     "test:unit": "jest --testPathPattern=test/unit/ --forceExit",
     "test:integration": "jest --testPathPattern=test/integration/ --forceExit"
   },
-  "keywords": ["cli", "fsca", "blockchain", "tools", "smart-contracts"],
+  "keywords": [
+    "cli",
+    "arkheion",
+    "blockchain",
+    "tools",
+    "smart-contracts"
+  ],
   "author": "",
   "license": "Apache-2.0",
   "dependencies": {

@@ -19,11 +19,11 @@ const MINIMAL_ABI = [
 ];
 
 function makeTmpDir() {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fsca-list-test-'));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'arkheion-list-test-'));
     fs.writeFileSync(path.join(dir, 'project.json'), JSON.stringify({
         network: { rpc: 'http://localhost:8545' },
         account: { privateKey: '0x' + 'a'.repeat(64) },
-        fsca: { multisigAddress: '0x' + '1'.repeat(40) },
+        arkheion: { multisigAddress: '0x' + '1'.repeat(40) },
     }), 'utf-8');
     const artifactDir = path.join(dir, 'artifacts', 'contracts', 'undeployed', 'wallet', 'multisigwallet.sol');
     fs.mkdirSync(artifactDir, { recursive: true });

@@ -1,5 +1,5 @@
 /**
- * fsca cluster history --id <contractId>
+ * arkheion cluster history --id <contractId>
  *
  * Prints the full version chain for a contractId, sorted by generation.
  */
@@ -10,7 +10,7 @@ const { normalizeRecord } = require('../version');
 
 function loadProjectConfig(rootDir) {
     const configPath = path.join(rootDir, 'project.json');
-    if (!fs.existsSync(configPath)) throw new Error('project.json not found. Run "fsca init" first.');
+    if (!fs.existsSync(configPath)) throw new Error('project.json not found. Run "arkheion init" first.');
     return JSON.parse(fs.readFileSync(configPath, 'utf-8'));
 }
 
@@ -21,7 +21,7 @@ module.exports = async function history({ rootDir, args = {} }) {
 
         const contractId = Number(id);
         const config = loadProjectConfig(rootDir);
-        const allDeployed = config.fsca.alldeployedcontracts || [];
+        const allDeployed = config.arkheion.alldeployedcontracts || [];
 
         const records = allDeployed
             .filter(r => r.contractId != null && Number(r.contractId) === contractId)

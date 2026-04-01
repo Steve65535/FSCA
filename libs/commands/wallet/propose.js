@@ -14,7 +14,7 @@ const { acquireLock } = require('../clusterLock');
 function loadProjectConfig(rootDir) {
     const configPath = path.join(rootDir, 'project.json');
     if (!fs.existsSync(configPath)) {
-        throw new Error('project.json not found. Please run "fsca init" first.');
+        throw new Error('project.json not found. Please run "arkheion init" first.');
     }
     return JSON.parse(fs.readFileSync(configPath, 'utf-8'));
 }
@@ -80,7 +80,7 @@ module.exports = async function propose({ rootDir, args = {}, subcommands = [] }
         // 1. Load config
         const config = loadProjectConfig(rootDir);
 
-        const multiSigAddress = config.fsca?.multisigAddress || config.fsca?.multiSigAddress;
+        const multiSigAddress = config.arkheion?.multisigAddress || config.arkheion?.multiSigAddress;
         if (!multiSigAddress || multiSigAddress === '0x') {
             throw new Error('MultiSig wallet address not found in project.json.');
         }
@@ -125,8 +125,8 @@ module.exports = async function propose({ rootDir, args = {}, subcommands = [] }
             console.log(`${logger.COLORS.brightPurple}╚═══════════════════════════════════════════════════════════════╝${logger.COLORS.reset}`);
             console.log('');
             console.log(`${logger.COLORS.brightYellow}Next steps:${logger.COLORS.reset}`);
-            console.log(`  1. Other owners confirm: ${logger.COLORS.brightBlue}fsca wallet confirm ${txIndex}${logger.COLORS.reset}`);
-            console.log(`  2. Execute when ready:   ${logger.COLORS.brightBlue}fsca wallet execute ${txIndex}${logger.COLORS.reset}`);
+            console.log(`  1. Other owners confirm: ${logger.COLORS.brightBlue}arkheion wallet confirm ${txIndex}${logger.COLORS.reset}`);
+            console.log(`  2. Execute when ready:   ${logger.COLORS.brightBlue}arkheion wallet execute ${txIndex}${logger.COLORS.reset}`);
             console.log('');
         } else {
             console.log(`${logger.COLORS.brightGreen}✓ Proposal submitted!${logger.COLORS.reset}`);

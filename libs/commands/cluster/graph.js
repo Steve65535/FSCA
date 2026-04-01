@@ -26,18 +26,18 @@ function sleep(ms) {
 function loadProjectConfig(rootDir) {
     const configPath = path.join(rootDir, 'project.json');
     if (!fs.existsSync(configPath)) {
-        throw new Error('project.json not found. Please run "fsca init" first.');
+        throw new Error('project.json not found. Please run "arkheion init" first.');
     }
 
     const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
     const rpcUrl = credentials.resolveRpcUrl(config, rootDir);
 
     if (!rpcUrl) {
-        throw new Error('Network RPC URL not configured (set FSCA_RPC_URL or network.rpc in project.json)');
+        throw new Error('Network RPC URL not configured (set Arkheion_RPC_URL or network.rpc in project.json)');
     }
 
-    if (!config.fsca || !config.fsca.clusterAddress) {
-        throw new Error('ClusterManager address not found in project.json. Please run "fsca cluster init" first.');
+    if (!config.arkheion || !config.arkheion.clusterAddress) {
+        throw new Error('ClusterManager address not found in project.json. Please run "arkheion cluster init" first.');
     }
 
     config.network = config.network || {};
@@ -65,13 +65,13 @@ function loadClusterManagerABI(rootDir) {
 }
 
 function loadNormalTemplateABI(rootDir) {
-    // NormalTemplate usually in fsca-core/lib/normaltemplate.sol
+    // NormalTemplate usually in arkheion-core/lib/normaltemplate.sol
     // Artifact path depends on where it was compiled.
     // Try a few common paths
     const paths = [
         'artifacts/contracts/lib/normaltemplate.sol/normalTemplate.json',
         'artifacts/contracts/undeployed/lib/normaltemplate.sol/normalTemplate.json',
-        'artifacts/@fsca-core/lib/normaltemplate.sol/normalTemplate.json' // if using package
+        'artifacts/@arkheion-core/lib/normaltemplate.sol/normalTemplate.json' // if using package
     ];
 
     for (const p of paths) {
@@ -145,7 +145,7 @@ function generateHtml(mermaidContent, nodes) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FSCA Cluster Topology</title>
+    <title>Arkheion Cluster Topology</title>
     <style>
         body { font-family: sans-serif; padding: 20px; background: #f4f4f9; }
         h1 { color: #333; }
@@ -162,7 +162,7 @@ function generateHtml(mermaidContent, nodes) {
     </style>
 </head>
 <body>
-    <h1>FSCA Cluster Topology</h1>
+    <h1>Arkheion Cluster Topology</h1>
 
     <div class="container">
         <h2>Dependency Graph</h2>
@@ -203,7 +203,7 @@ module.exports = async function graph({ rootDir, args = {} }) {
         const clusterAbi = loadClusterManagerABI(rootDir);
         const templateAbi = loadNormalTemplateABI(rootDir);
 
-        const clusterAddress = config.fsca.clusterAddress;
+        const clusterAddress = config.arkheion.clusterAddress;
         const clusterContract = new ethers.Contract(clusterAddress, clusterAbi, provider);
 
         console.log("Analyzing Cluster Topology...");

@@ -1,6 +1,6 @@
-# Best Practices for Building On-Chain Microservice Clusters with FSCA CLI
+# Best Practices for Building On-Chain Microservice Clusters with Arkheion CLI
 
-> Repository: `fsca-cli`
+> Repository: `arkheion-cli`
 > Goal: Elevate from "works locally" to "production-ready, upgradeable, auditable, and rollback-capable".
 
 ## 1. Design Architecture First
@@ -51,46 +51,46 @@ Before switching environments, back up the current config and verify:
 - `network.chainId`
 - `account.address`
 - `account.privateKey`
-- `fsca.clusterAddress` (written after `cluster init`)
+- `arkheion.clusterAddress` (written after `cluster init`)
 
-In production, use `.env` (`FSCA_PRIVATE_KEY`, `FSCA_RPC_URL`) for secrets and node config. Never commit sensitive fields to the repository.
+In production, use `.env` (`Arkheion_PRIVATE_KEY`, `Arkheion_RPC_URL`) for secrets and node config. Never commit sensitive fields to the repository.
 
 ## 3. Recommended Deployment Flow (Golden Path)
 
 ### Step A: Initialize and deploy backbone
 
 ```bash
-fsca init
-fsca cluster init --threshold 2 --yes --cleanup keep
+arkheion init
+arkheion cluster init --threshold 2 --yes --cleanup keep
 ```
 
 - Production: use `threshold >= 2`. Never use `1/1` multi-sig.
 - After `cluster init`, run a read-only sanity check:
 
 ```bash
-fsca wallet owners
-fsca cluster operator list
+arkheion wallet owners
+arkheion cluster operator list
 ```
 
 ### Step B: Deploy business Pods (deploy first, mount later)
 
 ```bash
-fsca deploy --contract LendingPod --description LendingPod --yes --cleanup soft
-fsca deploy --contract PriceOracle --description PriceOracle --yes --cleanup soft
-fsca deploy --contract LiquidationPod --description LiquidationPod --yes --cleanup soft
+arkheion deploy --contract LendingPod --description LendingPod --yes --cleanup soft
+arkheion deploy --contract PriceOracle --description PriceOracle --yes --cleanup soft
+arkheion deploy --contract LiquidationPod --description LiquidationPod --yes --cleanup soft
 ```
 
 - Record the address and tx hash for each Pod immediately after deployment.
-- Use `fsca cluster choose <address>` to set context explicitly before each operation.
+- Use `arkheion cluster choose <address>` to set context explicitly before each operation.
 
 ### Step C: Configure links before mounting
 
 Example: `LendingPod -> PriceOracle`, `LendingPod -> LiquidationPod`:
 
 ```bash
-fsca cluster choose <LendingPod-Address>
-fsca cluster link active <PriceOracle-Address> 2
-fsca cluster link active <LiquidationPod-Address> 3
+arkheion cluster choose <LendingPod-Address>
+arkheion cluster link active <PriceOracle-Address> 2
+arkheion cluster link active <LiquidationPod-Address> 3
 ```
 
 Use `active` / `passive` (the legacy alias `positive` still works but is not recommended).
@@ -98,22 +98,22 @@ Use `active` / `passive` (the legacy alias `positive` still works but is not rec
 ### Step D: Mount and go live
 
 ```bash
-fsca cluster choose <LendingPod-Address>
-fsca cluster mount 1 "LendingPod"
+arkheion cluster choose <LendingPod-Address>
+arkheion cluster mount 1 "LendingPod"
 
-fsca cluster choose <PriceOracle-Address>
-fsca cluster mount 2 "PriceOracle"
+arkheion cluster choose <PriceOracle-Address>
+arkheion cluster mount 2 "PriceOracle"
 
-fsca cluster choose <LiquidationPod-Address>
-fsca cluster mount 3 "LiquidationPod"
+arkheion cluster choose <LiquidationPod-Address>
+arkheion cluster mount 3 "LiquidationPod"
 ```
 
 Post-mount verification:
 
 ```bash
-fsca cluster list mounted
-fsca cluster info 1
-fsca cluster graph
+arkheion cluster list mounted
+arkheion cluster info 1
+arkheion cluster graph
 ```
 
 ## 4. Governance and Permission Best Practices
@@ -127,15 +127,15 @@ Typical governance commands:
 
 ```bash
 # Interactive mode (prompts for confirmation)
-fsca wallet submit --to <target> --value 0 --data <hexData>
-fsca wallet confirm <txIndex>
-fsca wallet execute <txIndex>
-fsca wallet info <txIndex>
+arkheion wallet submit --to <target> --value 0 --data <hexData>
+arkheion wallet confirm <txIndex>
+arkheion wallet execute <txIndex>
+arkheion wallet info <txIndex>
 
 # CI/automation mode (skip confirmation)
-fsca wallet submit --to <target> --value 0 --data <hexData> --yes
-fsca wallet confirm <txIndex> --yes
-fsca wallet execute <txIndex> --yes
+arkheion wallet submit --to <target> --value 0 --data <hexData> --yes
+arkheion wallet confirm <txIndex> --yes
+arkheion wallet execute <txIndex> --yes
 ```
 
 **Valid confirmations**: `wallet list`, `wallet info`, `wallet confirm`, `wallet revoke`, and `wallet execute` all display *valid confirmations* — a live recount from current owners only. After an owner is removed, the stale `numConfirmations` field is ignored and the count is recomputed. This prevents the "removed owner's confirmation still counts toward execution" vulnerability.
@@ -145,8 +145,8 @@ fsca wallet execute <txIndex> --yes
 ## 5. Upgrade Strategy (Zero-Downtime First)
 
 ```bash
-fsca cluster check
-fsca cluster upgrade --id <id> --contract <NewContractName> --yes --cleanup soft
+arkheion cluster check
+arkheion cluster upgrade --id <id> --contract <NewContractName> --yes --cleanup soft
 ```
 
 Default behavior copies the old contract's active/passive pod relationships and remounts. Use for interface-compatible upgrades.
@@ -154,7 +154,7 @@ Default behavior copies the old contract's active/passive pod relationships and 
 When the new version has significantly different dependencies:
 
 ```bash
-fsca cluster upgrade --id <id> --contract <NewContractName> --skip-copy-pods
+arkheion cluster upgrade --id <id> --contract <NewContractName> --skip-copy-pods
 ```
 
 Then manually rebuild links and run regression tests.
@@ -171,16 +171,16 @@ Use `cluster rollback` as a standard command, not a last resort:
 
 ```bash
 # View version chain
-fsca cluster history --id <id>
+arkheion cluster history --id <id>
 
 # Dry-run rollback (no chain writes)
-fsca cluster rollback --id <id> --dry-run
+arkheion cluster rollback --id <id> --dry-run
 
 # Roll back to previous version
-fsca cluster rollback --id <id> --yes
+arkheion cluster rollback --id <id> --yes
 
 # Roll back to a specific generation
-fsca cluster rollback --id <id> --generation <n> --yes
+arkheion cluster rollback --id <id> --generation <n> --yes
 ```
 
 Emergency SOP:
@@ -194,9 +194,9 @@ Emergency SOP:
 
 After every structural change, run at minimum:
 
-- `fsca cluster graph` — verify topology matches design.
-- `fsca cluster list mounted` — verify mount set is correct.
-- `fsca normal get modules active|passive` — verify critical links exist.
+- `arkheion cluster graph` — verify topology matches design.
+- `arkheion cluster list mounted` — verify mount set is correct.
+- `arkheion normal get modules active|passive` — verify critical links exist.
 
 Recommended CI/CD additions:
 
@@ -207,11 +207,11 @@ Recommended CI/CD additions:
 
 ## 8. Implementation Pitfalls
 
-- Use `active/passive` for `fsca cluster link` (legacy alias `positive` still works but is not recommended).
-- `fsca deploy` requires `fsca.clusterAddress` — run `fsca cluster init` first.
-- `fsca cluster choose` scans the registry for state checks; performance degrades with large registries.
+- Use `active/passive` for `arkheion cluster link` (legacy alias `positive` still works but is not recommended).
+- `arkheion deploy` requires `arkheion.clusterAddress` — run `arkheion cluster init` first.
+- `arkheion cluster choose` scans the registry for state checks; performance degrades with large registries.
 - `project.json` is a source of truth — include it in your change management strategy and audit trail.
-- **`contractId: null` vs `@fsca-id 0`**: Infrastructure contracts (MultiSigWallet, ClusterManager, etc.) use `contractId: null` internally. The CLI guards all numeric comparisons against `null` coercion, so `@fsca-id 0` is safe to use for business contracts. If you have a legacy `project.json` with old infra records in `runningcontracts`, run `fsca cluster check` to verify no conflicts exist.
+- **`contractId: null` vs `@arkheion-id 0`**: Infrastructure contracts (MultiSigWallet, ClusterManager, etc.) use `contractId: null` internally. The CLI guards all numeric comparisons against `null` coercion, so `@arkheion-id 0` is safe to use for business contracts. If you have a legacy `project.json` with old infra records in `runningcontracts`, run `arkheion cluster check` to verify no conflicts exist.
 
 ## 9. Production Template (Ready to Use)
 
@@ -220,39 +220,39 @@ Recommended CI/CD additions:
 cp project.prod.json project.json
 
 # 1) Static check
-fsca cluster check
+arkheion cluster check
 
 # 2) Deploy backbone
-fsca cluster init --threshold 2 --yes --cleanup keep
-fsca wallet owners
-fsca cluster operator list
+arkheion cluster init --threshold 2 --yes --cleanup keep
+arkheion wallet owners
+arkheion cluster operator list
 
 # 3) Deploy business Pods
-fsca deploy --contract LendingPod --yes --cleanup soft
-fsca deploy --contract PriceOracle --yes --cleanup soft
-fsca deploy --contract LiquidationPod --yes --cleanup soft
+arkheion deploy --contract LendingPod --yes --cleanup soft
+arkheion deploy --contract PriceOracle --yes --cleanup soft
+arkheion deploy --contract LiquidationPod --yes --cleanup soft
 
 # 4) Configure links (pre-mount)
-fsca cluster choose <LendingPod-Address>
-fsca cluster link active <PriceOracle-Address> 2
-fsca cluster link active <LiquidationPod-Address> 3
+arkheion cluster choose <LendingPod-Address>
+arkheion cluster link active <PriceOracle-Address> 2
+arkheion cluster link active <LiquidationPod-Address> 3
 
 # 5) Mount and go live
-fsca cluster choose <LendingPod-Address> && fsca cluster mount 1 "LendingPod"
-fsca cluster choose <PriceOracle-Address> && fsca cluster mount 2 "PriceOracle"
-fsca cluster choose <LiquidationPod-Address> && fsca cluster mount 3 "LiquidationPod"
+arkheion cluster choose <LendingPod-Address> && arkheion cluster mount 1 "LendingPod"
+arkheion cluster choose <PriceOracle-Address> && arkheion cluster mount 2 "PriceOracle"
+arkheion cluster choose <LiquidationPod-Address> && arkheion cluster mount 3 "LiquidationPod"
 
 # 6) Acceptance
-fsca cluster list mounted
-fsca cluster graph
+arkheion cluster list mounted
+arkheion cluster graph
 
 # 7) Subsequent upgrades (check first)
-fsca cluster check
-fsca cluster upgrade --id 1 --contract LendingPodV2 --yes --cleanup soft
+arkheion cluster check
+arkheion cluster upgrade --id 1 --contract LendingPodV2 --yes --cleanup soft
 
 # 8) Emergency rollback
-fsca cluster rollback --id 1 --dry-run
-fsca cluster rollback --id 1 --yes
+arkheion cluster rollback --id 1 --dry-run
+arkheion cluster rollback --id 1 --yes
 ```
 
 ## 10. Recommended Architecture: Storage/Logic Separation
@@ -364,15 +364,15 @@ contract TradeEngine is normalTemplate {
 
 ```bash
 # Set context
-fsca cluster choose <Pod-Address>
+arkheion cluster choose <Pod-Address>
 
 # ABI permission management
-fsca normal right set <abiId> <maxRight>
-fsca normal right remove <abiId>
+arkheion normal right set <abiId> <maxRight>
+arkheion normal right remove <abiId>
 
 # Query module relationships
-fsca normal get modules active
-fsca normal get modules passive
+arkheion normal get modules active
+arkheion normal get modules passive
 ```
 
 ## 12. Auto-Assembly Best Practices
@@ -380,10 +380,10 @@ fsca normal get modules passive
 ### 12.1 Annotation template
 
 ```solidity
-// @fsca-auto yes
-// @fsca-id 2
-// @fsca-active 1,3
-// @fsca-passive 4
+// @arkheion-auto yes
+// @arkheion-id 2
+// @arkheion-active 1,3
+// @arkheion-passive 4
 contract TradeEngineV2 is normalTemplate {
     // business logic
 }
@@ -391,18 +391,18 @@ contract TradeEngineV2 is normalTemplate {
 
 Rules:
 
-- `@fsca-id` must be globally unique. Never reuse.
-- `@fsca-active` / `@fsca-passive` list target Pod IDs, comma-separated.
-- Do not add `@fsca-auto yes` to contracts not participating in auto-assembly.
+- `@arkheion-id` must be globally unique. Never reuse.
+- `@arkheion-active` / `@arkheion-passive` list target Pod IDs, comma-separated.
+- Do not add `@arkheion-auto yes` to contracts not participating in auto-assembly.
 - One business contract per file for clean scanning and conflict detection.
 
 ### 12.2 Command sequence
 
 ```bash
-fsca cluster check          # detect ID conflicts, missing annotations, cycles
-fsca cluster auto --dry-run # preview plan, no chain writes
-fsca cluster auto           # execute deploy/link/mount
-fsca cluster graph          # verify final topology
+arkheion cluster check          # detect ID conflicts, missing annotations, cycles
+arkheion cluster auto --dry-run # preview plan, no chain writes
+arkheion cluster auto           # execute deploy/link/mount
+arkheion cluster graph          # verify final topology
 ```
 
 ### 12.3 Production rules
@@ -417,9 +417,9 @@ fsca cluster graph          # verify final topology
 - `alldeployedcontracts` is the historical ledger. Always retain `generation`, `status`, `deploySeq`, `podSnapshot`.
 - Only restore via `cluster rollback` — never manually mount old versions.
 - After every upgrade or rollback:
-  - `fsca cluster history --id <id>`
-  - `fsca cluster list mounted`
-  - `fsca cluster graph`
+  - `arkheion cluster history --id <id>`
+  - `arkheion cluster list mounted`
+  - `arkheion cluster graph`
 - Cleanup policy:
   - Production: `--cleanup soft`
   - Test: `--cleanup keep` or `soft`

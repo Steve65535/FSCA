@@ -1,8 +1,8 @@
 /**
  * Cluster Operator 管理
- * fsca cluster operator list
- * fsca cluster operator add <address>
- * fsca cluster operator remove <address>
+ * arkheion cluster operator list
+ * arkheion cluster operator add <address>
+ * arkheion cluster operator remove <address>
  */
 
 const fs = require('fs');
@@ -49,7 +49,7 @@ module.exports = async function operator({ rootDir, args = {}, subcommands = [],
 
         // Load Config
         const config = loadProjectConfig(rootDir);
-        const clusterAddress = config.fsca?.clusterAddress;
+        const clusterAddress = config.arkheion?.clusterAddress;
 
         if (!clusterAddress || !ethers.isAddress(clusterAddress)) {
             throw new Error("Cluster address not configured.");

@@ -1,7 +1,7 @@
 /**
  * NormalTemplate 权限管理命令
- * fsca normal right set <abiId> <maxRight>
- * fsca normal right remove <abiId>
+ * arkheion normal right set <abiId> <maxRight>
+ * arkheion normal right remove <abiId>
  * 
  * 注意：setAbiRight 和 removeAbiRight 有 onlyCluster 修饰符
  * 因此必须通过 ClusterManager.universalCall 进行调用
@@ -32,14 +32,14 @@ function loadNormalTemplateABI(rootDir) {
     const possiblePaths = [
         path.join(rootDir, 'artifacts', 'contracts', 'undeployed', 'lib', 'normaltemplate.sol', 'normalTemplate.json'),
         path.join(rootDir, 'artifacts', 'contracts', 'lib', 'normaltemplate.sol', 'normalTemplate.json'),
-        path.join(rootDir, 'artifacts', 'contracts', 'fsca-core', 'lib', 'normaltemplate.sol', 'normalTemplate.json') // 假设 fsca-core 在这
+        path.join(rootDir, 'artifacts', 'contracts', 'arkheion-core', 'lib', 'normaltemplate.sol', 'normalTemplate.json') // 假设 arkheion-core 在这
     ];
     for (const p of possiblePaths) {
         if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, 'utf-8')).abi;
     }
-    // Fallback: 如果没有 build，尝试从 libs/fsca-core 构建或者报错?
-    // 这里假设用户已经运行过 fsca init 并且编译过
-    throw new Error('NormalTemplate ABI not found. Please run "fsca init" and ensure contracts are compiled.');
+    // Fallback: 如果没有 build，尝试从 libs/arkheion-core 构建或者报错?
+    // 这里假设用户已经运行过 arkheion init 并且编译过
+    throw new Error('NormalTemplate ABI not found. Please run "arkheion init" and ensure contracts are compiled.');
 }
 
 function loadClusterManagerABI(rootDir) {
@@ -91,11 +91,11 @@ module.exports = async function right({ rootDir, args = {}, subcommands = [], co
 
         // 2. Load Config
         const config = loadProjectConfig(rootDir);
-        const currentOperating = config.fsca?.currentOperating;
-        const clusterAddress = config.fsca?.clusterAddress;
+        const currentOperating = config.arkheion?.currentOperating;
+        const clusterAddress = config.arkheion?.clusterAddress;
 
         if (!currentOperating || !ethers.isAddress(currentOperating)) {
-            throw new Error("No valid current operating contract. Run 'fsca cluster choose <addr>' first.");
+            throw new Error("No valid current operating contract. Run 'arkheion cluster choose <addr>' first.");
         }
         if (!clusterAddress || !ethers.isAddress(clusterAddress)) {
             throw new Error("Cluster address not found in config.");

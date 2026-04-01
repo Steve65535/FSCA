@@ -1,16 +1,18 @@
 {
-  "description": "FSCA CLI - 链上智能合约集群开发工具",
+  "description": "Arkheion CLI - 链上智能合约集群开发工具",
   "commands": {
     "help": {
       "description": "显示帮助信息",
       "handler": "./libs/commands/help",
-      "usage": "fsca help"
+      "usage": "arkheion help"
     },
     "deploy": {
       "description": "部署继承自 NormalTemplate 的业务合约",
       "handler": "./libs/commands/deploy",
-      "requires": ["initialized"],
-      "usage": "fsca deploy --contract <ContractName> [--description <name>] [--cleanup <keep|soft|hard>] [--yes]",
+      "requires": [
+        "initialized"
+      ],
+      "usage": "arkheion deploy --contract <ContractName> [--description <name>] [--cleanup <keep|soft|hard>] [--yes]",
       "params": {
         "contract": {
           "type": "string",
@@ -35,9 +37,9 @@
       }
     },
     "init": {
-      "description": "初始化 FSCA 项目",
+      "description": "初始化 Arkheion 项目",
       "handler": "./libs/commands/init/init",
-      "usage": "fsca init [--networkName <name>] [--rpc <url>] [--chainId <id>] [--blockConfirmations <num>] [--accountPrivateKey <key>] [--address <addr>]",
+      "usage": "arkheion init [--networkName <name>] [--rpc <url>] [--chainId <id>] [--blockConfirmations <num>] [--accountPrivateKey <key>] [--address <addr>]",
       "params": {
         "networkName": {
           "type": "string",
@@ -77,8 +79,10 @@
         "submit": {
           "description": "提交新交易到多签钱包",
           "handler": "./libs/commands/wallet/submit",
-          "requires": ["cluster_ready"],
-          "usage": "fsca wallet submit --to <address> --value <amount> --data <hex> [--yes]",
+          "requires": [
+            "cluster_ready"
+          ],
+          "usage": "arkheion wallet submit --to <address> --value <amount> --data <hex> [--yes]",
           "params": {
             "to": {
               "type": "string",
@@ -105,8 +109,10 @@
         "confirm": {
           "description": "确认待处理的交易",
           "handler": "./libs/commands/wallet/confirm",
-          "requires": ["cluster_ready"],
-          "usage": "fsca wallet confirm <txIndex> [--yes]",
+          "requires": [
+            "cluster_ready"
+          ],
+          "usage": "arkheion wallet confirm <txIndex> [--yes]",
           "params": {
             "txIndex": {
               "type": "number",
@@ -123,8 +129,10 @@
         "execute": {
           "description": "执行已达到阈值的交易",
           "handler": "./libs/commands/wallet/execute",
-          "requires": ["cluster_ready"],
-          "usage": "fsca wallet execute <txIndex> [--yes]",
+          "requires": [
+            "cluster_ready"
+          ],
+          "usage": "arkheion wallet execute <txIndex> [--yes]",
           "params": {
             "txIndex": {
               "type": "number",
@@ -141,8 +149,10 @@
         "revoke": {
           "description": "撤销之前的确认",
           "handler": "./libs/commands/wallet/revoke",
-          "requires": ["cluster_ready"],
-          "usage": "fsca wallet revoke <txIndex> [--yes]",
+          "requires": [
+            "cluster_ready"
+          ],
+          "usage": "arkheion wallet revoke <txIndex> [--yes]",
           "params": {
             "txIndex": {
               "type": "number",
@@ -159,8 +169,10 @@
         "list": {
           "description": "列出所有交易",
           "handler": "./libs/commands/wallet/list",
-          "requires": ["cluster_ready"],
-          "usage": "fsca wallet list [--pending]",
+          "requires": [
+            "cluster_ready"
+          ],
+          "usage": "arkheion wallet list [--pending]",
           "params": {
             "pending": {
               "type": "boolean",
@@ -172,8 +184,10 @@
         "info": {
           "description": "查看交易详情",
           "handler": "./libs/commands/wallet/info",
-          "requires": ["cluster_ready"],
-          "usage": "fsca wallet info <txIndex>",
+          "requires": [
+            "cluster_ready"
+          ],
+          "usage": "arkheion wallet info <txIndex>",
           "params": {
             "txIndex": {
               "type": "number",
@@ -185,8 +199,10 @@
         "owners": {
           "description": "查看所有所有者和阈值",
           "handler": "./libs/commands/wallet/owners",
-          "requires": ["cluster_ready"],
-          "usage": "fsca wallet owners"
+          "requires": [
+            "cluster_ready"
+          ],
+          "usage": "arkheion wallet owners"
         },
         "propose": {
           "description": "提议治理变更",
@@ -194,8 +210,10 @@
             "add-owner": {
               "description": "提议添加新所有者",
               "handler": "./libs/commands/wallet/propose",
-              "requires": ["cluster_ready"],
-              "usage": "fsca wallet propose add-owner <address> [--yes]",
+              "requires": [
+                "cluster_ready"
+              ],
+              "usage": "arkheion wallet propose add-owner <address> [--yes]",
               "params": {
                 "address": {
                   "type": "string",
@@ -212,8 +230,10 @@
             "remove-owner": {
               "description": "提议移除所有者",
               "handler": "./libs/commands/wallet/propose",
-              "requires": ["cluster_ready"],
-              "usage": "fsca wallet propose remove-owner <address> [--yes]",
+              "requires": [
+                "cluster_ready"
+              ],
+              "usage": "arkheion wallet propose remove-owner <address> [--yes]",
               "params": {
                 "address": {
                   "type": "string",
@@ -230,8 +250,10 @@
             "change-threshold": {
               "description": "提议修改确认阈值",
               "handler": "./libs/commands/wallet/propose",
-              "requires": ["cluster_ready"],
-              "usage": "fsca wallet propose change-threshold <threshold> [--yes]",
+              "requires": [
+                "cluster_ready"
+              ],
+              "usage": "arkheion wallet propose change-threshold <threshold> [--yes]",
               "params": {
                 "threshold": {
                   "type": "number",
@@ -250,13 +272,15 @@
       }
     },
     "cluster": {
-      "description": "FSCA 集群相关命令",
+      "description": "Arkheion 集群相关命令",
       "commands": {
         "init": {
-          "description": "部署 FSCA 集群",
+          "description": "部署 Arkheion 集群",
           "handler": "./libs/commands/cluster/init",
-          "requires": ["initialized"],
-          "usage": "fsca cluster init [--threshold <num>] [--cleanup <keep|soft|hard>] [--yes]",
+          "requires": [
+            "initialized"
+          ],
+          "usage": "arkheion cluster init [--threshold <num>] [--cleanup <keep|soft|hard>] [--yes]",
           "params": {
             "threshold": {
               "type": "number",
@@ -278,8 +302,10 @@
         "graph": {
           "description": "生成集群拓扑图 (Mermaid)",
           "handler": "./libs/commands/cluster/graph",
-          "requires": ["cluster_ready"],
-          "usage": "fsca cluster graph"
+          "requires": [
+            "cluster_ready"
+          ],
+          "usage": "arkheion cluster graph"
         },
         "list": {
           "description": "列举全局合约集群",
@@ -287,22 +313,28 @@
             "mounted": {
               "description": "列举已挂载的合约",
               "handler": "./libs/commands/cluster/list",
-              "requires": ["cluster_ready"],
-              "usage": "fsca cluster list mounted"
+              "requires": [
+                "cluster_ready"
+              ],
+              "usage": "arkheion cluster list mounted"
             },
             "all": {
               "description": "列举所有合约（包括已删除的）",
               "handler": "./libs/commands/cluster/list",
-              "requires": ["cluster_ready"],
-              "usage": "fsca cluster list all"
+              "requires": [
+                "cluster_ready"
+              ],
+              "usage": "arkheion cluster list all"
             }
           }
         },
         "info": {
           "description": "查询集群合约详情 (by ID)",
           "handler": "./libs/commands/cluster/info",
-          "requires": ["cluster_ready"],
-          "usage": "fsca cluster info <id>",
+          "requires": [
+            "cluster_ready"
+          ],
+          "usage": "arkheion cluster info <id>",
           "params": {
             "id": {
               "type": "number",
@@ -314,8 +346,10 @@
         "current": {
           "description": "显示当前操作的合约信息",
           "handler": "./libs/commands/cluster/current",
-          "requires": ["cluster_ready"],
-          "usage": "fsca cluster current"
+          "requires": [
+            "cluster_ready"
+          ],
+          "usage": "arkheion cluster current"
         },
         "operator": {
           "description": "管理集群管理员 (Operator)",
@@ -323,14 +357,18 @@
             "list": {
               "description": "列出所有 Operator",
               "handler": "./libs/commands/cluster/operator",
-              "requires": ["cluster_ready"],
-              "usage": "fsca cluster operator list"
+              "requires": [
+                "cluster_ready"
+              ],
+              "usage": "arkheion cluster operator list"
             },
             "add": {
               "description": "添加 Operator",
               "handler": "./libs/commands/cluster/operator",
-              "requires": ["cluster_ready"],
-              "usage": "fsca cluster operator add <address>",
+              "requires": [
+                "cluster_ready"
+              ],
+              "usage": "arkheion cluster operator add <address>",
               "params": {
                 "address": {
                   "type": "string",
@@ -342,8 +380,10 @@
             "remove": {
               "description": "移除 Operator",
               "handler": "./libs/commands/cluster/operator",
-              "requires": ["cluster_ready"],
-              "usage": "fsca cluster operator remove <address>",
+              "requires": [
+                "cluster_ready"
+              ],
+              "usage": "arkheion cluster operator remove <address>",
               "params": {
                 "address": {
                   "type": "string",
@@ -357,8 +397,10 @@
         "choose": {
           "description": "选择当前操作的合约",
           "handler": "./libs/commands/cluster/choose",
-          "requires": ["cluster_ready"],
-          "usage": "fsca cluster choose <address>",
+          "requires": [
+            "cluster_ready"
+          ],
+          "usage": "arkheion cluster choose <address>",
           "params": {
             "address": {
               "type": "string",
@@ -370,8 +412,11 @@
         "link": {
           "description": "链接合约(仅未挂载时可用)",
           "handler": "./libs/commands/cluster/link",
-          "requires": ["cluster_ready", "current_contract_selected"],
-          "usage": "fsca cluster link <type> <targetAddress> <targetId>",
+          "requires": [
+            "cluster_ready",
+            "current_contract_selected"
+          ],
+          "usage": "arkheion cluster link <type> <targetAddress> <targetId>",
           "params": {
             "type": {
               "type": "string",
@@ -393,8 +438,11 @@
         "unlink": {
           "description": "解除合约链接 (需要合约已挂载)",
           "handler": "./libs/commands/cluster/unlink",
-          "requires": ["cluster_ready", "current_contract_selected"],
-          "usage": "fsca cluster unlink <type> <targetAddress> <targetId>",
+          "requires": [
+            "cluster_ready",
+            "current_contract_selected"
+          ],
+          "usage": "arkheion cluster unlink <type> <targetAddress> <targetId>",
           "params": {
             "type": {
               "type": "string",
@@ -416,8 +464,11 @@
         "mount": {
           "description": "将当前合约挂载到集群",
           "handler": "./libs/commands/cluster/mount",
-          "requires": ["cluster_ready", "current_contract_selected"],
-          "usage": "fsca cluster mount <id> <name>",
+          "requires": [
+            "cluster_ready",
+            "current_contract_selected"
+          ],
+          "usage": "arkheion cluster mount <id> <name>",
           "params": {
             "id": {
               "type": "number",
@@ -434,8 +485,10 @@
         "unmount": {
           "description": "从集群卸载合约",
           "handler": "./libs/commands/cluster/unmount",
-          "requires": ["cluster_ready"],
-          "usage": "fsca cluster unmount <id>",
+          "requires": [
+            "cluster_ready"
+          ],
+          "usage": "arkheion cluster unmount <id>",
           "params": {
             "id": {
               "type": "number",
@@ -447,8 +500,10 @@
         "upgrade": {
           "description": "热替换集群中的合约 (下架旧合约, 部署并上线新合约)",
           "handler": "./libs/commands/cluster/upgrade",
-          "requires": ["cluster_ready"],
-          "usage": "fsca cluster upgrade --id <id> --contract <ContractName> [--skip-copy-pods] [--cleanup <keep|soft|hard>] [--yes] [--resume] [--restart]",
+          "requires": [
+            "cluster_ready"
+          ],
+          "usage": "arkheion cluster upgrade --id <id> --contract <ContractName> [--skip-copy-pods] [--cleanup <keep|soft|hard>] [--yes] [--resume] [--restart]",
           "params": {
             "id": {
               "type": "number",
@@ -490,8 +545,10 @@
         "auto": {
           "description": "自动装配集群合约 (扫描源码注解, 解析依赖, 自动部署/链接/挂载)",
           "handler": "./libs/commands/cluster/auto",
-          "requires": ["cluster_ready"],
-          "usage": "fsca cluster auto [--dry-run] [--cleanup <keep|soft|hard>] [--yes] [--resume] [--restart]",
+          "requires": [
+            "cluster_ready"
+          ],
+          "usage": "arkheion cluster auto [--dry-run] [--cleanup <keep|soft|hard>] [--yes] [--resume] [--restart]",
           "params": {
             "dry-run": {
               "type": "boolean",
@@ -523,14 +580,18 @@
         "check": {
           "description": "静态检查集群注解 (ID 冲突 / pod 环 / 函数调用环，不执行链上操作)",
           "handler": "./libs/commands/cluster/check",
-          "requires": ["initialized"],
-          "usage": "fsca cluster check"
+          "requires": [
+            "initialized"
+          ],
+          "usage": "arkheion cluster check"
         },
         "rollback": {
           "description": "回滚合约到指定历史版本",
           "handler": "./libs/commands/cluster/rollback",
-          "requires": ["cluster_ready"],
-          "usage": "fsca cluster rollback --id <contractId> [--generation <n>] [--dry-run] [--yes]",
+          "requires": [
+            "cluster_ready"
+          ],
+          "usage": "arkheion cluster rollback --id <contractId> [--generation <n>] [--dry-run] [--yes]",
           "params": {
             "id": {
               "type": "number",
@@ -557,8 +618,10 @@
         "history": {
           "description": "查看合约版本历史",
           "handler": "./libs/commands/cluster/history",
-          "requires": ["cluster_ready"],
-          "usage": "fsca cluster history --id <contractId>",
+          "requires": [
+            "cluster_ready"
+          ],
+          "usage": "arkheion cluster history --id <contractId>",
           "params": {
             "id": {
               "type": "number",
@@ -578,8 +641,11 @@
             "set": {
               "description": "设置 ABI 权限等级",
               "handler": "./libs/commands/normal/right",
-              "requires": ["cluster_ready", "current_contract_selected"],
-              "usage": "fsca normal right set <abiId> <maxRight>",
+              "requires": [
+                "cluster_ready",
+                "current_contract_selected"
+              ],
+              "usage": "arkheion normal right set <abiId> <maxRight>",
               "params": {
                 "abiId": {
                   "type": "string",
@@ -596,8 +662,11 @@
             "remove": {
               "description": "移除 ABI 权限",
               "handler": "./libs/commands/normal/right",
-              "requires": ["cluster_ready", "current_contract_selected"],
-              "usage": "fsca normal right remove <abiId>",
+              "requires": [
+                "cluster_ready",
+                "current_contract_selected"
+              ],
+              "usage": "arkheion normal right remove <abiId>",
               "params": {
                 "abiId": {
                   "type": "string",
@@ -614,8 +683,11 @@
             "modules": {
               "description": "获取已链接的模块",
               "handler": "./libs/commands/normal/get",
-              "requires": ["cluster_ready", "current_contract_selected"],
-              "usage": "fsca normal get modules <type>",
+              "requires": [
+                "cluster_ready",
+                "current_contract_selected"
+              ],
+              "usage": "arkheion normal get modules <type>",
               "params": {
                 "type": {
                   "type": "string",

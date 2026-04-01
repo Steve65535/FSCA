@@ -101,8 +101,8 @@ describe('extractCrossContractCalls', () => {
 describe('buildInterfaceToContractMap', () => {
     it('maps IFoo to contract Foo by stripping I prefix', () => {
         const contracts = [
-            { contractName: 'Foo', fscaId: 1, sourceCode: `interface IFoo { function foo() external; } contract Bar is normalTemplate { function bar() external { IFoo(addr).foo(); } }` },
-            { contractName: 'Bar', fscaId: 2, sourceCode: `contract Bar is normalTemplate {}` },
+            { contractName: 'Foo', arkheionId: 1, sourceCode: `interface IFoo { function foo() external; } contract Bar is normalTemplate { function bar() external { IFoo(addr).foo(); } }` },
+            { contractName: 'Bar', arkheionId: 2, sourceCode: `contract Bar is normalTemplate {}` },
         ];
         const map = buildInterfaceToContractMap(contracts);
         expect(map.get('IFoo')).toBe('Foo');
@@ -111,8 +111,8 @@ describe('buildInterfaceToContractMap', () => {
     it('does not map interface to the contract that declares it', () => {
         // IBar is declared in Bar's source but describes contract Foo
         const contracts = [
-            { contractName: 'Foo', fscaId: 1, sourceCode: `contract Foo is normalTemplate {}` },
-            { contractName: 'Bar', fscaId: 2, sourceCode: `interface IFoo { function foo() external; } contract Bar is normalTemplate {}` },
+            { contractName: 'Foo', arkheionId: 1, sourceCode: `contract Foo is normalTemplate {}` },
+            { contractName: 'Bar', arkheionId: 2, sourceCode: `interface IFoo { function foo() external; } contract Bar is normalTemplate {}` },
         ];
         const map = buildInterfaceToContractMap(contracts);
         // IFoo should map to Foo, not Bar
@@ -121,7 +121,7 @@ describe('buildInterfaceToContractMap', () => {
 
     it('returns empty map when no interfaces exist', () => {
         const contracts = [
-            { contractName: 'A', fscaId: 1, sourceCode: `contract A is normalTemplate {}` },
+            { contractName: 'A', arkheionId: 1, sourceCode: `contract A is normalTemplate {}` },
         ];
         expect(buildInterfaceToContractMap(contracts).size).toBe(0);
     });
@@ -130,8 +130,8 @@ describe('buildInterfaceToContractMap', () => {
 describe('buildFunctionGraph + detectFunctionCycles', () => {
     it('detects no cycles in independent contracts', () => {
         const contracts = [
-            { contractName: 'A', fscaId: 1, sourceCode: `contract A is normalTemplate { function foo() external {} }` },
-            { contractName: 'B', fscaId: 2, sourceCode: `contract B is normalTemplate { function bar() external {} }` },
+            { contractName: 'A', arkheionId: 1, sourceCode: `contract A is normalTemplate { function foo() external {} }` },
+            { contractName: 'B', arkheionId: 2, sourceCode: `contract B is normalTemplate { function bar() external {} }` },
         ];
         const graph = buildFunctionGraph(contracts);
         expect(detectFunctionCycles(graph)).toHaveLength(0);
@@ -152,8 +152,8 @@ describe('buildFunctionGraph + detectFunctionCycles', () => {
             }
         `;
         const contracts = [
-            { contractName: 'A', fscaId: 1, sourceCode: srcA },
-            { contractName: 'B', fscaId: 2, sourceCode: srcB },
+            { contractName: 'A', arkheionId: 1, sourceCode: srcA },
+            { contractName: 'B', arkheionId: 2, sourceCode: srcB },
         ];
         const graph = buildFunctionGraph(contracts);
         // Verify edges exist
@@ -174,14 +174,14 @@ describe('buildFunctionGraph + detectFunctionCycles', () => {
                 function foo() external { IUnknown(addr).doSomething(); }
             }
         `;
-        const contracts = [{ contractName: 'A', fscaId: 1, sourceCode: src }];
+        const contracts = [{ contractName: 'A', arkheionId: 1, sourceCode: src }];
         const graph = buildFunctionGraph(contracts);
         expect(graph.edges.get('A.foo').size).toBe(0);
     });
 
     it('builds nodes for all functions in all contracts', () => {
         const contracts = [
-            { contractName: 'X', fscaId: 1, sourceCode: `contract X is normalTemplate { function alpha() external {} function beta() external {} }` },
+            { contractName: 'X', arkheionId: 1, sourceCode: `contract X is normalTemplate { function alpha() external {} function beta() external {} }` },
         ];
         const graph = buildFunctionGraph(contracts);
         expect(graph.nodes.has('X.alpha')).toBe(true);
@@ -190,7 +190,7 @@ describe('buildFunctionGraph + detectFunctionCycles', () => {
 
     it('no self-cycle for single contract', () => {
         const contracts = [
-            { contractName: 'A', fscaId: 1, sourceCode: `contract A is normalTemplate { function foo() external {} }` },
+            { contractName: 'A', arkheionId: 1, sourceCode: `contract A is normalTemplate { function foo() external {} }` },
         ];
         const graph = buildFunctionGraph(contracts);
         expect(detectFunctionCycles(graph)).toHaveLength(0);
@@ -210,8 +210,8 @@ describe('buildFunctionGraph + detectFunctionCycles', () => {
             }
         `;
         const contracts = [
-            { contractName: 'A', fscaId: 1, sourceCode: srcA },
-            { contractName: 'B', fscaId: 2, sourceCode: srcB },
+            { contractName: 'A', arkheionId: 1, sourceCode: srcA },
+            { contractName: 'B', arkheionId: 2, sourceCode: srcB },
         ];
         const graph = buildFunctionGraph(contracts);
         expect(graph.edges.get('A.foo').has('B.bar')).toBe(true);

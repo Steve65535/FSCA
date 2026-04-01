@@ -8,7 +8,7 @@ const os = require('os');
 const scan = require('../../libs/commands/cluster/auto/scanner');
 
 function makeTmpProject(files) {
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fsca-test-'));
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'arkheion-test-'));
     for (const [relPath, content] of Object.entries(files)) {
         const full = path.join(tmpDir, relPath);
         fs.mkdirSync(path.dirname(full), { recursive: true });
@@ -22,8 +22,8 @@ function cleanup(dir) {
 }
 
 const NORMAL_TEMPLATE_CONTRACT = (name) => `
-// @fsca-auto yes
-// @fsca-id 1
+// @arkheion-auto yes
+// @arkheion-id 1
 contract ${name} is normalTemplate {
     function foo() external {}
 }

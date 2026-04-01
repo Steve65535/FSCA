@@ -4,12 +4,12 @@
 
 const reconcile = require('../../libs/commands/cluster/auto/reconciler');
 
-function makeContract(fscaId, contractName, activePods = [], passivePods = []) {
-    return { fscaId, contractName, activePods, passivePods };
+function makeContract(arkheionId, contractName, activePods = [], passivePods = []) {
+    return { arkheionId, contractName, activePods, passivePods };
 }
 
 function makeConfig(running = [], unmounted = []) {
-    return { fsca: { runningcontracts: running, unmountedcontracts: unmounted } };
+    return { arkheion: { runningcontracts: running, unmountedcontracts: unmounted } };
 }
 
 describe('reconciler', () => {
@@ -83,7 +83,7 @@ describe('reconciler', () => {
                 [{ name: 'TradeEngine', address: '0x2' }]
             );
             const { plan } = reconcile(contracts, config);
-            const byId = Object.fromEntries(plan.map(p => [p.fscaId, p]));
+            const byId = Object.fromEntries(plan.map(p => [p.arkheionId, p]));
             expect(byId[1].state).toBe('mounted');
             expect(byId[2].state).toBe('unmounted');
             expect(byId[3].state).toBe('undeployed');
@@ -99,8 +99,8 @@ describe('reconciler', () => {
         });
     });
 
-    describe('contractId null vs fsca-id 0 boundary', () => {
-        it('infra record with contractId=null does not match fscaId=0', () => {
+    describe('contractId null vs arkheion-id 0 boundary', () => {
+        it('infra record with contractId=null does not match arkheionId=0', () => {
             // Simulate a runningcontracts that has an infra record (contractId: null)
             const running = [
                 { name: 'MultiSigWallet', address: '0xMSIG', contractId: null },
@@ -108,7 +108,7 @@ describe('reconciler', () => {
             ];
             const contracts = [makeContract(0, 'ContractZero')];
             const { plan } = reconcile(contracts, makeConfig(running));
-            // ContractZero (fscaId=0) must NOT be treated as already mounted
+            // ContractZero (arkheionId=0) must NOT be treated as already mounted
             expect(plan[0].state).toBe('undeployed');
             expect(plan[0].actions).toEqual(['deploy', 'link', 'mount']);
         });
@@ -125,7 +125,7 @@ describe('reconciler', () => {
             expect(warnings[0]).toMatch(/already mounted/);
         });
 
-        it('null contractId records in runningcontracts never block any fscaId', () => {
+        it('null contractId records in runningcontracts never block any arkheionId', () => {
             const running = [
                 { name: 'ProxyWallet', address: '0xPW', contractId: null },
                 { name: 'EvokerManager', address: '0xEM', contractId: null },

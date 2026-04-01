@@ -2,7 +2,7 @@
 
 ## 目标
 
-让 `fsca cluster graph` 不只展示拓扑，还能直接可视化证明热替换。
+让 `arkheion cluster graph` 不只展示拓扑，还能直接可视化证明热替换。
 
 ## 当前问题
 

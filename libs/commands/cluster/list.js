@@ -33,18 +33,18 @@ function sleep(ms) {
 function loadProjectConfig(rootDir) {
   const configPath = path.join(rootDir, 'project.json');
   if (!fs.existsSync(configPath)) {
-    throw new Error('project.json not found. Please run "fsca init" first.');
+    throw new Error('project.json not found. Please run "arkheion init" first.');
   }
 
   const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
   const rpcUrl = credentials.resolveRpcUrl(config, rootDir);
 
   if (!rpcUrl) {
-    throw new Error('Network RPC URL not configured (set FSCA_RPC_URL or network.rpc in project.json)');
+    throw new Error('Network RPC URL not configured (set Arkheion_RPC_URL or network.rpc in project.json)');
   }
 
-  if (!config.fsca || !config.fsca.clusterAddress) {
-    throw new Error('ClusterManager address not found in project.json. Please run "fsca cluster init" first.');
+  if (!config.arkheion || !config.arkheion.clusterAddress) {
+    throw new Error('ClusterManager address not found in project.json. Please run "arkheion cluster init" first.');
   }
 
   config.network = config.network || {};
@@ -63,7 +63,7 @@ function loadClusterManagerABI(rootDir) {
     path.join(rootDir, 'artifacts', 'contracts', 'deployed', 'structure', 'ClusterManager.sol', 'ClusterManager.json'),
     path.join(rootDir, 'artifacts', 'contracts', 'undeployed', 'structure', 'clustermanager.sol', 'ClusterManager.json'),
     path.join(rootDir, 'artifacts', 'contracts', 'structure', 'clustermanager.sol', 'ClusterManager.json'),
-        path.join(rootDir, 'artifacts', 'contracts', 'core', 'structure', 'clustermanager.sol', 'ClusterManager.json'),
+    path.join(rootDir, 'artifacts', 'contracts', 'core', 'structure', 'clustermanager.sol', 'ClusterManager.json'),
   ];
 
   for (const artifactPath of artifactPaths) {
@@ -327,8 +327,8 @@ module.exports = async function list({ rootDir, args = {}, subcommands = [] }) {
 
     if (listType !== 'mounted' && listType !== 'all') {
       console.error('Invalid list type. Use "mounted" or "all"');
-      console.log('Usage: fsca cluster list mounted');
-      console.log('       fsca cluster list all');
+      console.log('Usage: arkheion cluster list mounted');
+      console.log('       arkheion cluster list all');
       process.exit(1);
     }
 
@@ -338,7 +338,7 @@ module.exports = async function list({ rootDir, args = {}, subcommands = [] }) {
     // 初始化 Provider 和 Contract
     const provider = getProvider(config.network.rpc);
     const abi = loadClusterManagerABI(rootDir);
-    const clusterAddress = config.fsca.clusterAddress;
+    const clusterAddress = config.arkheion.clusterAddress;
 
     const contract = new ethers.Contract(clusterAddress, abi, provider);
 

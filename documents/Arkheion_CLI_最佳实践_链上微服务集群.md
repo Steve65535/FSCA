@@ -1,6 +1,6 @@
-# 使用 FSCA CLI 构建链上微服务集群的最佳实践
+# 使用 Arkheion CLI 构建链上微服务集群的最佳实践
 
-> 适用仓库：`fsca-cli`  
+> 适用仓库：`arkheion-cli`  
 > 目标：把“能跑通”提升到“可上线、可升级、可审计、可回滚”。
 
 ## 1. 架构设计先行
@@ -51,17 +51,17 @@ Storage Pod 规划原则：
 - `network.chainId`
 - `account.address`
 - `account.privateKey`
-- `fsca.clusterAddress`（`cluster init` 后写入）
+- `arkheion.clusterAddress`（`cluster init` 后写入）
 
-注意：生产环境建议优先使用 `.env`（`FSCA_PRIVATE_KEY`、`FSCA_RPC_URL`）管理密钥与节点配置，不要在仓库中提交敏感字段。
+注意：生产环境建议优先使用 `.env`（`Arkheion_PRIVATE_KEY`、`Arkheion_RPC_URL`）管理密钥与节点配置，不要在仓库中提交敏感字段。
 
 ## 3. 推荐上线流程（黄金路径）
 
 ## 步骤 A：初始化与骨架部署
 
 ```bash
-fsca init
-fsca cluster init --threshold 2 --yes --cleanup keep
+arkheion init
+arkheion cluster init --threshold 2 --yes --cleanup keep
 ```
 
 实践建议：
@@ -70,31 +70,31 @@ fsca cluster init --threshold 2 --yes --cleanup keep
 - `cluster init` 成功后，先执行一次只读核验：
 
 ```bash
-fsca wallet owners
-fsca cluster operator list
+arkheion wallet owners
+arkheion cluster operator list
 ```
 
 ## 步骤 B：部署业务 Pod（先部署，后挂载）
 
 ```bash
-fsca deploy --contract LendingPod --description LendingPod --yes --cleanup soft
-fsca deploy --contract PriceOracle --description PriceOracle --yes --cleanup soft
-fsca deploy --contract LiquidationPod --description LiquidationPod --yes --cleanup soft
+arkheion deploy --contract LendingPod --description LendingPod --yes --cleanup soft
+arkheion deploy --contract PriceOracle --description PriceOracle --yes --cleanup soft
+arkheion deploy --contract LiquidationPod --description LiquidationPod --yes --cleanup soft
 ```
 
 实践建议：
 
 - 每部署一个 Pod 立即记录地址与交易哈希。
-- 以 `fsca cluster choose <address>` 显式切上下文，避免误操作到上一个合约。
+- 以 `arkheion cluster choose <address>` 显式切上下文，避免误操作到上一个合约。
 
 ## 步骤 C：先配 Link，再 Mount
 
 以 `LendingPod -> PriceOracle`、`LendingPod -> LiquidationPod` 为例：
 
 ```bash
-fsca cluster choose <LendingPod-Address>
-fsca cluster link active <PriceOracle-Address> 2
-fsca cluster link active <LiquidationPod-Address> 3
+arkheion cluster choose <LendingPod-Address>
+arkheion cluster link active <PriceOracle-Address> 2
+arkheion cluster link active <LiquidationPod-Address> 3
 ```
 
 关键注意：
@@ -105,22 +105,22 @@ fsca cluster link active <LiquidationPod-Address> 3
 ## 步骤 D：挂载上线
 
 ```bash
-fsca cluster choose <LendingPod-Address>
-fsca cluster mount 1 "LendingPod"
+arkheion cluster choose <LendingPod-Address>
+arkheion cluster mount 1 "LendingPod"
 
-fsca cluster choose <PriceOracle-Address>
-fsca cluster mount 2 "PriceOracle"
+arkheion cluster choose <PriceOracle-Address>
+arkheion cluster mount 2 "PriceOracle"
 
-fsca cluster choose <LiquidationPod-Address>
-fsca cluster mount 3 "LiquidationPod"
+arkheion cluster choose <LiquidationPod-Address>
+arkheion cluster mount 3 "LiquidationPod"
 ```
 
 上线后核验：
 
 ```bash
-fsca cluster list mounted
-fsca cluster info 1
-fsca cluster graph
+arkheion cluster list mounted
+arkheion cluster info 1
+arkheion cluster graph
 ```
 
 ## 4. 治理与权限最佳实践
@@ -134,15 +134,15 @@ fsca cluster graph
 
 ```bash
 # 交互模式（会弹出确认提示）
-fsca wallet submit --to <target> --value 0 --data <hexData>
-fsca wallet confirm <txIndex>
-fsca wallet execute <txIndex>
-fsca wallet info <txIndex>
+arkheion wallet submit --to <target> --value 0 --data <hexData>
+arkheion wallet confirm <txIndex>
+arkheion wallet execute <txIndex>
+arkheion wallet info <txIndex>
 
 # CI/自动化模式（跳过确认）
-fsca wallet submit --to <target> --value 0 --data <hexData> --yes
-fsca wallet confirm <txIndex> --yes
-fsca wallet execute <txIndex> --yes
+arkheion wallet submit --to <target> --value 0 --data <hexData> --yes
+arkheion wallet confirm <txIndex> --yes
+arkheion wallet execute <txIndex> --yes
 ```
 
 **有效确认数说明**：`wallet list`、`wallet info`、`wallet confirm`、`wallet revoke`、`wallet execute` 均显示**有效确认数**（live recount），即仅统计当前 owner 列表中的确认。移除 owner 后，旧的 `numConfirmations` 字段不再被信任，系统自动重新计算。这避免了"owner 被移除后仍可执行交易"的安全漏洞。
@@ -154,8 +154,8 @@ fsca wallet execute <txIndex> --yes
 推荐使用：
 
 ```bash
-fsca cluster check
-fsca cluster upgrade --id <id> --contract <NewContractName> --yes --cleanup soft
+arkheion cluster check
+arkheion cluster upgrade --id <id> --contract <NewContractName> --yes --cleanup soft
 ```
 
 默认行为会复制旧合约的 active/passive 模块关系并重新挂载。适用于接口兼容升级。
@@ -163,7 +163,7 @@ fsca cluster upgrade --id <id> --contract <NewContractName> --yes --cleanup soft
 当新版本依赖关系有重大变化时：
 
 ```bash
-fsca cluster upgrade --id <id> --contract <NewContractName> --skip-copy-pods
+arkheion cluster upgrade --id <id> --contract <NewContractName> --skip-copy-pods
 ```
 
 然后手动重建 link 并做回归验证。
@@ -180,16 +180,16 @@ fsca cluster upgrade --id <id> --contract <NewContractName> --skip-copy-pods
 
 ```bash
 # 查看版本链
-fsca cluster history --id <id>
+arkheion cluster history --id <id>
 
 # 预演回滚（不写链）
-fsca cluster rollback --id <id> --dry-run
+arkheion cluster rollback --id <id> --dry-run
 
 # 回滚到上一个版本
-fsca cluster rollback --id <id> --yes
+arkheion cluster rollback --id <id> --yes
 
 # 回滚到指定版本
-fsca cluster rollback --id <id> --generation <n> --yes
+arkheion cluster rollback --id <id> --generation <n> --yes
 ```
 
 应急 SOP：
@@ -203,9 +203,9 @@ fsca cluster rollback --id <id> --generation <n> --yes
 
 每次结构变更后至少执行：
 
-- `fsca cluster graph`：拓扑是否符合设计图。
-- `fsca cluster list mounted`：挂载集是否正确。
-- `fsca normal get modules active|passive`：关键链路是否存在。
+- `arkheion cluster graph`：拓扑是否符合设计图。
+- `arkheion cluster list mounted`：挂载集是否正确。
+- `arkheion normal get modules active|passive`：关键链路是否存在。
 
 建议在 CI/CD 中加入：
 
@@ -218,11 +218,11 @@ fsca cluster rollback --id <id> --generation <n> --yes
 
 基于当前仓库实现，建议特别注意：
 
-- `fsca cluster link` 建议使用 `active/passive`（旧别名 `positive` 仍兼容）。
-- `fsca deploy` 依赖 `fsca.clusterAddress`，通常要先 `fsca cluster init`。
-- `fsca cluster choose` 会扫描注册表进行状态检查，注册量大时耗时会上升。
+- `arkheion cluster link` 建议使用 `active/passive`（旧别名 `positive` 仍兼容）。
+- `arkheion deploy` 依赖 `arkheion.clusterAddress`，通常要先 `arkheion cluster init`。
+- `arkheion cluster choose` 会扫描注册表进行状态检查，注册量大时耗时会上升。
 - `project.json` 是状态真源之一，建议纳入版本管理策略并做变更审计。
-- **`contractId: null` 与 `@fsca-id 0`**：基础设施合约（MultiSigWallet、ClusterManager 等）内部使用 `contractId: null`。CLI 在所有数值比较中均对 `null` 做了防护，因此 `@fsca-id 0` 可安全用于业务合约。如果本地 `project.json` 中存在旧版遗留的基础设施记录在 `runningcontracts` 中，请运行 `fsca cluster auto check` 确认无冲突。
+- **`contractId: null` 与 `@arkheion-id 0`**：基础设施合约（MultiSigWallet、ClusterManager 等）内部使用 `contractId: null`。CLI 在所有数值比较中均对 `null` 做了防护，因此 `@arkheion-id 0` 可安全用于业务合约。如果本地 `project.json` 中存在旧版遗留的基础设施记录在 `runningcontracts` 中，请运行 `arkheion cluster auto check` 确认无冲突。
 
 ## 9. 生产落地模板（可直接套用）
 
@@ -231,39 +231,39 @@ fsca cluster rollback --id <id> --generation <n> --yes
 cp project.prod.json project.json
 
 # 1) 静态检查
-fsca cluster check
+arkheion cluster check
 
 # 2) 骨架部署
-fsca cluster init --threshold 2 --yes --cleanup keep
-fsca wallet owners
-fsca cluster operator list
+arkheion cluster init --threshold 2 --yes --cleanup keep
+arkheion wallet owners
+arkheion cluster operator list
 
 # 3) 业务部署
-fsca deploy --contract LendingPod --yes --cleanup soft
-fsca deploy --contract PriceOracle --yes --cleanup soft
-fsca deploy --contract LiquidationPod --yes --cleanup soft
+arkheion deploy --contract LendingPod --yes --cleanup soft
+arkheion deploy --contract PriceOracle --yes --cleanup soft
+arkheion deploy --contract LiquidationPod --yes --cleanup soft
 
 # 4) 链路配置（未挂载阶段）
-fsca cluster choose <LendingPod-Address>
-fsca cluster link active <PriceOracle-Address> 2
-fsca cluster link active <LiquidationPod-Address> 3
+arkheion cluster choose <LendingPod-Address>
+arkheion cluster link active <PriceOracle-Address> 2
+arkheion cluster link active <LiquidationPod-Address> 3
 
 # 5) 挂载上线
-fsca cluster choose <LendingPod-Address> && fsca cluster mount 1 "LendingPod"
-fsca cluster choose <PriceOracle-Address> && fsca cluster mount 2 "PriceOracle"
-fsca cluster choose <LiquidationPod-Address> && fsca cluster mount 3 "LiquidationPod"
+arkheion cluster choose <LendingPod-Address> && arkheion cluster mount 1 "LendingPod"
+arkheion cluster choose <PriceOracle-Address> && arkheion cluster mount 2 "PriceOracle"
+arkheion cluster choose <LiquidationPod-Address> && arkheion cluster mount 3 "LiquidationPod"
 
 # 6) 验收
-fsca cluster list mounted
-fsca cluster graph
+arkheion cluster list mounted
+arkheion cluster graph
 
 # 7) 后续升级（推荐先 check）
-fsca cluster check
-fsca cluster upgrade --id 1 --contract LendingPodV2 --yes --cleanup soft
+arkheion cluster check
+arkheion cluster upgrade --id 1 --contract LendingPodV2 --yes --cleanup soft
 
 # 8) 应急回滚
-fsca cluster rollback --id 1 --dry-run
-fsca cluster rollback --id 1 --yes
+arkheion cluster rollback --id 1 --dry-run
+arkheion cluster rollback --id 1 --yes
 ```
 
 ## 10. 参考资料
@@ -337,7 +337,7 @@ mapping(bytes32 => mapping(address => uint256)) private _kv;
 
 1. 数据 Pod 长周期稳定运行（通常不升级）。
 2. 逻辑 Pod（如 TradeEngine、RiskGuard、Lending）按版本热替换。
-3. 通过 `fsca cluster upgrade --id <id> --contract <V2>` 升级逻辑模块。
+3. 通过 `arkheion cluster upgrade --id <id> --contract <V2>` 升级逻辑模块。
 4. 若依赖关系变化，使用 `--skip-copy-pods` 后手动重建链路。
 
 这就是“链上微服务集群”的关键形态：  
@@ -367,11 +367,11 @@ mapping(bytes32 => mapping(address => uint256)) private _kv;
 - 数据不迁移：减少最危险的升级动作。
 - 逻辑可替换：满足高频业务迭代。
 - 权限可审计：每次结构变更可追踪、可审批、可回滚。
-- 与 FSCA 模型天然匹配：Pod 化、链接化、治理化。
+- 与 Arkheion 模型天然匹配：Pod 化、链接化、治理化。
 
 ## 12. 权限说明与 normalTemplate 库函数使用
 
-本节基于 `libs/fsca-core/lib/normaltemplate.sol` 的实际实现。
+本节基于 `libs/arkheion-core/lib/normaltemplate.sol` 的实际实现。
 
 ### 12.1 权限模型（谁可以调用什么）
 
@@ -448,26 +448,26 @@ contract TradeEngine is normalTemplate {
 1. 先选择当前操作合约：
 
 ```bash
-fsca cluster choose <Pod-Address>
+arkheion cluster choose <Pod-Address>
 ```
 
 2. 设置 ABI 权限（通过 ClusterManager 转发执行）：
 
 ```bash
-fsca normal right set <abiId> <maxRight>
-fsca normal right remove <abiId>
+arkheion normal right set <abiId> <maxRight>
+arkheion normal right remove <abiId>
 ```
 
 3. 查询模块关系：
 
 ```bash
-fsca normal get modules active
-fsca normal get modules passive
+arkheion normal get modules active
+arkheion normal get modules passive
 ```
 
 ### 12.5 重要注意事项
 
-- `fsca normal right` 是经 `ClusterManager.universalCall` 间接调用 `setAbiRight/removeAbiRight`，不是直接 EOA 调合约。
+- `arkheion normal right` 是经 `ClusterManager.universalCall` 间接调用 `setAbiRight/removeAbiRight`，不是直接 EOA 调合约。
 - 模块增删受 `notMounted` 约束，通常应在未挂载阶段配置好依赖。
 - `checkAbiRight` 依赖 `proxywalletaddr` 与 `_userRights` 正确初始化；生产前务必做端到端权限回归测试。
 
@@ -507,28 +507,28 @@ function onSettlementCallback(bytes32 orderId)
 ### 13.1 注解规范（推荐模板）
 
 ```solidity
-// @fsca-auto yes
-// @fsca-id 2
-// @fsca-active 1,3
-// @fsca-passive 4
+// @arkheion-auto yes
+// @arkheion-id 2
+// @arkheion-active 1,3
+// @arkheion-passive 4
 contract TradeEngineV2 is normalTemplate {
     // business logic
 }
 ```
 
 规范要求：
-- `@fsca-id` 全局唯一，禁止复用。
-- `@fsca-active` / `@fsca-passive` 只填写目标 Pod ID，逗号分隔。
-- 未接入自动装配的合约不要写 `@fsca-auto yes`。
+- `@arkheion-id` 全局唯一，禁止复用。
+- `@arkheion-active` / `@arkheion-passive` 只填写目标 Pod ID，逗号分隔。
+- 未接入自动装配的合约不要写 `@arkheion-auto yes`。
 - 一文件一业务合约，便于扫描与定位冲突。
 
 ### 13.2 自动装配命令敲定顺序
 
 ```bash
-fsca cluster check
-fsca cluster auto --dry-run
-fsca cluster auto
-fsca cluster graph
+arkheion cluster check
+arkheion cluster auto --dry-run
+arkheion cluster auto
+arkheion cluster graph
 ```
 
 顺序说明：
@@ -551,9 +551,9 @@ fsca cluster graph
 - `alldeployedcontracts` 作为历史账本，至少保留 `generation`、`status`、`deploySeq`、`podSnapshot`。
 - 只允许通过 `cluster rollback` 恢复 `deprecated` 版本，避免手工 mount 旧版本造成语义漂移。
 - 每次升级/回滚后都执行：
-  - `fsca cluster history --id <id>`
-  - `fsca cluster list mounted`
-  - `fsca cluster graph`
+  - `arkheion cluster history --id <id>`
+  - `arkheion cluster list mounted`
+  - `arkheion cluster graph`
 - 归档策略建议：
   - 生产：`--cleanup soft`
   - 测试：`--cleanup keep` 或 `soft`

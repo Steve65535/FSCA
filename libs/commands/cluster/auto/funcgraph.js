@@ -109,7 +109,7 @@ function extractInterfaces(source) {
  * 规则：IFoo 描述的是合约 Foo（去掉 I 前缀后与合约名匹配）
  * 这是 Solidity 惯例：接口定义在调用方源码中，描述被调用方。
  *
- * @param {Array} contracts - [{ contractName, fscaId, sourceCode }]
+ * @param {Array} contracts - [{ contractName, arkheionId, sourceCode }]
  * @returns {Map<interfaceName, contractName>}
  */
 function buildInterfaceToContractMap(contracts) {
@@ -159,7 +159,7 @@ function buildFunctionGraph(contracts) {
         contractFuncs.set(c.contractName, funcs);
         for (const f of funcs) {
             const key = `${c.contractName}.${f.name}`;
-            nodes.set(key, { contract: c.contractName, func: f.name, fscaId: c.fscaId });
+            nodes.set(key, { contract: c.contractName, func: f.name, arkheionId: c.arkheionId });
             edges.set(key, new Set());
         }
     }

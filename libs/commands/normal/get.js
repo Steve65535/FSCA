@@ -1,6 +1,6 @@
 /**
  * NormalTemplate 信息查询
- * fsca normal get modules <type> (active/passive)
+ * arkheion normal get modules <type> (active/passive)
  */
 
 const fs = require('fs');
@@ -24,7 +24,7 @@ function loadNormalTemplateABI(rootDir) {
     const possiblePaths = [
         path.join(rootDir, 'artifacts', 'contracts', 'undeployed', 'lib', 'normaltemplate.sol', 'normalTemplate.json'),
         path.join(rootDir, 'artifacts', 'contracts', 'lib', 'normaltemplate.sol', 'normalTemplate.json'),
-        path.join(rootDir, 'artifacts', 'contracts', 'fsca-core', 'lib', 'normaltemplate.sol', 'normalTemplate.json')
+        path.join(rootDir, 'artifacts', 'contracts', 'arkheion-core', 'lib', 'normaltemplate.sol', 'normalTemplate.json')
     ];
     for (const p of possiblePaths) {
         if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, 'utf-8')).abi;
@@ -53,10 +53,10 @@ module.exports = async function get({ rootDir, args = {}, subcommands = [], comm
 
             // Load Config
             const config = loadProjectConfig(rootDir);
-            const currentOperating = config.fsca?.currentOperating;
+            const currentOperating = config.arkheion?.currentOperating;
 
             if (!currentOperating || !ethers.isAddress(currentOperating)) {
-                throw new Error("No valid current operating contract. Run 'fsca cluster choose <addr>' first.");
+                throw new Error("No valid current operating contract. Run 'arkheion cluster choose <addr>' first.");
             }
 
             // Connect

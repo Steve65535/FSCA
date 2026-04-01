@@ -9,7 +9,7 @@ const path = require('path');
 const os = require('os');
 
 function makeTmpDir() {
-    return fs.mkdtempSync(path.join(os.tmpdir(), 'fsca-link-test-'));
+    return fs.mkdtempSync(path.join(os.tmpdir(), 'arkheion-link-test-'));
 }
 
 function writeProjectJson(dir, data) {
@@ -24,7 +24,7 @@ function baseProject(currentOperating, contracts = []) {
     return {
         network: { name: 'localnet', rpc: 'http://127.0.0.1:8545', chainId: 31337, blockConfirmations: 1 },
         account: { privateKey: '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80', address: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' },
-        fsca: {
+        arkheion: {
             clusterAddress: '0xCluster',
             currentOperating,
             alldeployedcontracts: contracts,
@@ -58,7 +58,7 @@ jest.mock('../../libs/commands/txExecutor', () => ({
 }));
 
 jest.mock('../../libs/commands/clusterLock', () => ({
-    acquireLock: () => ({ release: () => {} }),
+    acquireLock: () => ({ release: () => { } }),
 }));
 
 jest.mock('../../chain/provider', () => ({
@@ -82,14 +82,14 @@ jest.mock('ethers', () => {
                 if (mockContractInstances.has(key)) return mockContractInstances.get(key);
                 return {
                     whetherMounted: async () => 0,
-                    addActivePodBeforeMount: async () => {},
-                    addPassivePodBeforeMount: async () => {},
-                    addActivePodAfterMount: async () => {},
-                    addPassivePodAfterMount: async () => {},
-                    removeActivePodAfterMount: async () => {},
-                    removePassivePodAfterMount: async () => {},
-                    removeActivePodBeforeMount: async () => {},
-                    removePassivePodBeforeMount: async () => {},
+                    addActivePodBeforeMount: async () => { },
+                    addPassivePodBeforeMount: async () => { },
+                    addActivePodAfterMount: async () => { },
+                    addPassivePodAfterMount: async () => { },
+                    removeActivePodAfterMount: async () => { },
+                    removePassivePodAfterMount: async () => { },
+                    removeActivePodBeforeMount: async () => { },
+                    removePassivePodBeforeMount: async () => { },
                     getAllActiveModules: async () => [],
                     getAllPassiveModules: async () => [],
                 };
@@ -102,14 +102,14 @@ jest.mock('ethers', () => {
             if (mockContractInstances.has(key)) return mockContractInstances.get(key);
             return {
                 whetherMounted: async () => 0,
-                addActivePodBeforeMount: async () => {},
-                addPassivePodBeforeMount: async () => {},
-                addActivePodAfterMount: async () => {},
-                addPassivePodAfterMount: async () => {},
-                removeActivePodAfterMount: async () => {},
-                removePassivePodAfterMount: async () => {},
-                removeActivePodBeforeMount: async () => {},
-                removePassivePodBeforeMount: async () => {},
+                addActivePodBeforeMount: async () => { },
+                addPassivePodBeforeMount: async () => { },
+                addActivePodAfterMount: async () => { },
+                addPassivePodAfterMount: async () => { },
+                removeActivePodAfterMount: async () => { },
+                removePassivePodAfterMount: async () => { },
+                removeActivePodBeforeMount: async () => { },
+                removePassivePodBeforeMount: async () => { },
                 getAllActiveModules: async () => [],
                 getAllPassiveModules: async () => [],
             };
@@ -123,9 +123,9 @@ jest.mock('ethers', () => {
 beforeEach(() => {
     mockContractInstances.clear();
     jest.clearAllMocks();
-    jest.spyOn(console, 'log').mockImplementation(() => {});
-    jest.spyOn(console, 'warn').mockImplementation(() => {});
-    jest.spyOn(console, 'error').mockImplementation(() => {});
+    jest.spyOn(console, 'log').mockImplementation(() => { });
+    jest.spyOn(console, 'warn').mockImplementation(() => { });
+    jest.spyOn(console, 'error').mockImplementation(() => { });
 });
 
 afterEach(() => {
@@ -147,7 +147,7 @@ describe('link podSnapshot sync — real link.js code path', () => {
 
         mockContractInstances.set(CONTRACT_ADDR.toLowerCase(), {
             whetherMounted: async () => 0,
-            addActivePodBeforeMount: async () => {},
+            addActivePodBeforeMount: async () => { },
             getAllActiveModules: async () => [{ contractId: 110n, moduleAddress: '0xAccStorage' }],
             getAllPassiveModules: async () => [],
         });
@@ -156,7 +156,7 @@ describe('link podSnapshot sync — real link.js code path', () => {
         await link({ rootDir: dir, args: { type: 'active', targetAddress: TARGET_ADDR, targetId: '110' } });
 
         const result = readProjectJson(dir);
-        const record = result.fsca.alldeployedcontracts.find(r => r.address === CONTRACT_ADDR);
+        const record = result.arkheion.alldeployedcontracts.find(r => r.address === CONTRACT_ADDR);
         expect(record.podSnapshot.active).toEqual([{ contractId: 110 }]);
         expect(record.podSnapshot.passive).toEqual([]);
     });
@@ -170,7 +170,7 @@ describe('link podSnapshot sync — real link.js code path', () => {
 
         mockContractInstances.set(CONTRACT_ADDR.toLowerCase(), {
             whetherMounted: async () => 1,
-            addPassivePodAfterMount: async () => {},
+            addPassivePodAfterMount: async () => { },
             getAllActiveModules: async () => [],
             getAllPassiveModules: async () => [{ contractId: 610n, moduleAddress: '0xMarketReg' }],
         });
@@ -179,7 +179,7 @@ describe('link podSnapshot sync — real link.js code path', () => {
         await link({ rootDir: dir, args: { type: 'passive', targetAddress: TARGET_ADDR, targetId: '610' } });
 
         const result = readProjectJson(dir);
-        const record = result.fsca.alldeployedcontracts.find(r => r.address === CONTRACT_ADDR);
+        const record = result.arkheion.alldeployedcontracts.find(r => r.address === CONTRACT_ADDR);
         expect(record.podSnapshot.passive).toEqual([{ contractId: 610 }]);
     });
 
@@ -192,7 +192,7 @@ describe('link podSnapshot sync — real link.js code path', () => {
 
         mockContractInstances.set(CONTRACT_ADDR.toLowerCase(), {
             whetherMounted: async () => 0,
-            addActivePodBeforeMount: async () => {},
+            addActivePodBeforeMount: async () => { },
             getAllActiveModules: async () => { throw new Error('RPC timeout'); },
             getAllPassiveModules: async () => [],
         });
@@ -216,14 +216,14 @@ describe('unlink podSnapshot sync — real unlink.js code path', () => {
         ]);
         writeProjectJson(dir, config);
 
-        const removeActivePodBeforeMount = jest.fn(async () => {});
-        const removeActivePodAfterMount = jest.fn(async () => {});
+        const removeActivePodBeforeMount = jest.fn(async () => { });
+        const removeActivePodAfterMount = jest.fn(async () => { });
         mockContractInstances.set(CONTRACT_ADDR.toLowerCase(), {
             whetherMounted: async () => 0,
             getAllActiveModules: async () => [],
             getAllPassiveModules: async () => [],
         });
-        mockContractInstances.set(config.fsca.clusterAddress.toLowerCase(), {
+        mockContractInstances.set(config.arkheion.clusterAddress.toLowerCase(), {
             removeActivePodBeforeMount,
             removeActivePodAfterMount,
         });
@@ -244,7 +244,7 @@ describe('unlink podSnapshot sync — real unlink.js code path', () => {
 
         mockContractInstances.set(CONTRACT_ADDR.toLowerCase(), {
             whetherMounted: async () => 1,
-            removeActivePodAfterMount: async () => {},
+            removeActivePodAfterMount: async () => { },
             // after unlink, 111 is gone
             getAllActiveModules: async () => [{ contractId: 111n, moduleAddress: '0xPosStorage' }],
             getAllPassiveModules: async () => [],
@@ -254,7 +254,7 @@ describe('unlink podSnapshot sync — real unlink.js code path', () => {
         await unlink({ rootDir: dir, args: { type: 'active', targetAddress: TARGET_ADDR, targetId: '110' } });
 
         const result = readProjectJson(dir);
-        const record = result.fsca.alldeployedcontracts.find(r => r.address === CONTRACT_ADDR);
+        const record = result.arkheion.alldeployedcontracts.find(r => r.address === CONTRACT_ADDR);
         expect(record.podSnapshot.active).toEqual([{ contractId: 111 }]);
     });
 
@@ -267,7 +267,7 @@ describe('unlink podSnapshot sync — real unlink.js code path', () => {
 
         mockContractInstances.set(CONTRACT_ADDR.toLowerCase(), {
             whetherMounted: async () => 1,
-            removeActivePodAfterMount: async () => {},
+            removeActivePodAfterMount: async () => { },
             getAllActiveModules: async () => { throw new Error('RPC timeout'); },
             getAllPassiveModules: async () => [],
         });

@@ -2,17 +2,17 @@ const { CommandParser } = require('../../cli/parser');
 
 // 使用真实的 commands.json 结构做测试
 const testConfig = {
-  description: 'FSCA CLI',
+  description: 'Arkheion CLI',
   commands: {
     help: {
       description: '显示帮助信息',
       handler: './libs/commands/help',
-      usage: 'fsca help'
+      usage: 'arkheion help'
     },
     deploy: {
       description: '部署合约',
       handler: './libs/commands/deploy',
-      usage: 'fsca deploy',
+      usage: 'arkheion deploy',
       params: {
         description: { type: 'string', required: true, description: '合约描述' }
       }
@@ -24,9 +24,9 @@ const testConfig = {
           description: '提交交易',
           handler: './libs/commands/wallet/submit',
           params: {
-            to:    { type: 'string',  required: true  },
-            value: { type: 'string',  required: false },
-            data:  { type: 'string',  required: true  }
+            to: { type: 'string', required: true },
+            value: { type: 'string', required: false },
+            data: { type: 'string', required: true }
           }
         },
         confirm: {

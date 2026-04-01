@@ -1,6 +1,6 @@
 /**
  * Cluster Contract Info
- * fsca cluster info <id>
+ * arkheion cluster info <id>
  */
 
 const fs = require('fs');
@@ -57,7 +57,7 @@ module.exports = async function info({ rootDir, args = {}, subcommands = [], com
 
         // Load Config
         const config = loadProjectConfig(rootDir);
-        const clusterAddress = config.fsca?.clusterAddress;
+        const clusterAddress = config.arkheion?.clusterAddress;
 
         if (!clusterAddress || !ethers.isAddress(clusterAddress)) {
             throw new Error("Cluster address not configured.");

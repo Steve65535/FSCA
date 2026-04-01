@@ -23,7 +23,7 @@ const getSigner = walletSigner.getSigner;
 function loadProjectConfig(rootDir) {
     const configPath = path.join(rootDir, 'project.json');
     if (!fs.existsSync(configPath)) {
-        throw new Error('project.json not found. Please run "fsca init" first.');
+        throw new Error('project.json not found. Please run "arkheion init" first.');
     }
     return JSON.parse(fs.readFileSync(configPath, 'utf-8'));
 }
@@ -94,7 +94,7 @@ module.exports = async function deploy({ rootDir, args = {} }) {
 
         // 2. Load Config & Connect
         const config = loadProjectConfig(rootDir);
-        if (!config.fsca || !config.fsca.clusterAddress) {
+        if (!config.arkheion || !config.arkheion.clusterAddress) {
             throw new Error("Cluster address not configured properly.");
         }
 
@@ -108,10 +108,10 @@ module.exports = async function deploy({ rootDir, args = {} }) {
         // 4. Deploy
         // constructor(address _clusterAddress, string memory _name)
         console.log(`Deploying NormalTemplate...`);
-        console.log(`  Cluster: ${config.fsca.clusterAddress}`);
+        console.log(`  Cluster: ${config.arkheion.clusterAddress}`);
         console.log(`  Name: ${description}`);
 
-        const contract = await factory.deploy(config.fsca.clusterAddress, description);
+        const contract = await factory.deploy(config.arkheion.clusterAddress, description);
 
         console.log(`Transaction sent: ${contract.deploymentTransaction().hash}`);
         console.log(`Waiting for deployment...`);
@@ -131,7 +131,7 @@ module.exports = async function deploy({ rootDir, args = {} }) {
             timestamp: timestamp,
             dateStr: dateStr,
             txHash: contract.deploymentTransaction().hash,
-            cluster: config.fsca.clusterAddress,
+            cluster: config.arkheion.clusterAddress,
             network: config.network.name
         });
 
@@ -165,10 +165,10 @@ module.exports = async function deploy({ rootDir, args = {} }) {
         }
 
         // 6. Update Cache
-        if (!config.fsca.alldeployedcontracts) config.fsca.alldeployedcontracts = [];
-        if (!config.fsca.unmountedcontracts) config.fsca.unmountedcontracts = [];
+        if (!config.arkheion.alldeployedcontracts) config.arkheion.alldeployedcontracts = [];
+        if (!config.arkheion.unmountedcontracts) config.arkheion.unmountedcontracts = [];
 
-        const deploySeq = nextDeploySeq(config.fsca.alldeployedcontracts);
+        const deploySeq = nextDeploySeq(config.arkheion.alldeployedcontracts);
         const contractData = {
             name: description,
             address: deployedAddress,
@@ -181,11 +181,11 @@ module.exports = async function deploy({ rootDir, args = {} }) {
             podSnapshot: { active: [], passive: [] },
         };
 
-        config.fsca.alldeployedcontracts.push(contractData);
-        config.fsca.unmountedcontracts.push(contractData);
+        config.arkheion.alldeployedcontracts.push(contractData);
+        config.arkheion.unmountedcontracts.push(contractData);
 
         // Set currentOperating
-        config.fsca.currentOperating = deployedAddress;
+        config.arkheion.currentOperating = deployedAddress;
         console.log(`Updated currentOperating to ${deployedAddress}`);
 
         saveProjectConfig(rootDir, config);
@@ -228,7 +228,7 @@ function archiveDeployedContract(rootDir, metadata) {
 
     // 添加元数据注释
     const metadataComment = `/**
- * FSCA Deployed Contract Archive
+ * Arkheion Deployed Contract Archive
  * 
  * Contract Name: ${name}
  * Deployed Address: ${address}

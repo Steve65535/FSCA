@@ -8,7 +8,7 @@ const credentials = require("../wallet/credentials");
  */
 function getProvider(rpcUrl) {
   credentials.loadEnvFile(process.cwd());
-  const resolvedRpcUrl = process.env.FSCA_RPC_URL || rpcUrl;
+  const resolvedRpcUrl = process.env.Arkheion_RPC_URL || rpcUrl;
 
   if (!resolvedRpcUrl) {
     throw new Error("RPC URL is required");

@@ -11,7 +11,7 @@ const chainProvider = require('../../../chain/provider');
 function loadProjectConfig(rootDir) {
     const configPath = path.join(rootDir, 'project.json');
     if (!fs.existsSync(configPath)) {
-        throw new Error('project.json not found. Please run "fsca init" first.');
+        throw new Error('project.json not found. Please run "arkheion init" first.');
     }
     return JSON.parse(fs.readFileSync(configPath, 'utf-8'));
 }
@@ -39,7 +39,7 @@ module.exports = async function owners({ rootDir, args = {} }) {
         // 1. Load config
         const config = loadProjectConfig(rootDir);
 
-        const multiSigAddress = config.fsca?.multisigAddress || config.fsca?.multiSigAddress;
+        const multiSigAddress = config.arkheion?.multisigAddress || config.arkheion?.multiSigAddress;
         if (!multiSigAddress || multiSigAddress === '0x') {
             throw new Error('MultiSig wallet address not found in project.json.');
         }

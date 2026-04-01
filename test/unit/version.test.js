@@ -271,7 +271,7 @@ describe('findPreviousGeneration', () => {
         const all = [
             { contractId: 1, generation: null, status: 'deprecated', address: '0xOLD1', timeStamp: 1000 },
             { contractId: 1, generation: null, status: 'deprecated', address: '0xOLD2', timeStamp: 2000 },
-            { contractId: 1, generation: null, status: 'mounted',    address: '0xCURR', timeStamp: 3000 },
+            { contractId: 1, generation: null, status: 'mounted', address: '0xCURR', timeStamp: 3000 },
         ];
         const prev = findPreviousGeneration(all, 1);
         expect(prev).not.toBeNull();
@@ -297,11 +297,11 @@ describe('findPreviousGeneration', () => {
     });
 });
 
-// ─── null contractId vs fsca-id 0 boundary ────────────────────────────────────
+// ─── null contractId vs arkheion-id 0 boundary ────────────────────────────────────
 
 describe('contractId null vs 0 boundary', () => {
     const infraRecord = { name: 'MultiSigWallet', address: '0xMSIG', contractId: null, generation: null, status: 'mounted', timeStamp: 1000, deploySeq: 1, podSnapshot: { active: [], passive: [] } };
-    const id0Record   = { name: 'ContractZero',   address: '0xZERO', contractId: 0,    generation: 1,    status: 'mounted', timeStamp: 2000, deploySeq: 2, podSnapshot: { active: [], passive: [] } };
+    const id0Record = { name: 'ContractZero', address: '0xZERO', contractId: 0, generation: 1, status: 'mounted', timeStamp: 2000, deploySeq: 2, podSnapshot: { active: [], passive: [] } };
     const all = [infraRecord, id0Record];
 
     it('nextGeneration: null contractId returns null, does not count infra records toward id=0', () => {

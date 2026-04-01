@@ -58,7 +58,7 @@ describe('preflight', () => {
             writeConfig({
                 network: { rpc: 'http://localhost' },
                 account: { address: '0x1' },
-                fsca: { clusterAddress: '0xC' }
+                arkheion: { clusterAddress: '0xC' }
             });
             const { level } = inferState(tmpDir);
             expect(level).toBe('initialized');
@@ -68,7 +68,7 @@ describe('preflight', () => {
             writeConfig({
                 network: { rpc: 'http://localhost' },
                 account: { address: '0x1' },
-                fsca: {
+                arkheion: {
                     clusterAddress: '0xC',
                     multisigAddress: '0xM',
                     evokerManagerAddress: '0xE',
@@ -83,7 +83,7 @@ describe('preflight', () => {
             writeConfig({
                 network: { rpc: 'http://localhost' },
                 account: { address: '0x1' },
-                fsca: {
+                arkheion: {
                     clusterAddress: '0xC',
                     multiSigAddress: '0xM',
                     evokerManagerAddress: '0xE',
@@ -111,7 +111,7 @@ describe('preflight', () => {
         test('initialized required, no project.json → blocked', () => {
             const result = assertPrerequisites(tmpDir, ['initialized']);
             expect(result.ok).toBe(false);
-            expect(result.message).toMatch(/fsca init/);
+            expect(result.message).toMatch(/arkheion init/);
         });
 
         test('initialized required, project exists → ok', () => {
@@ -124,14 +124,14 @@ describe('preflight', () => {
             writeConfig({ network: { rpc: 'x' }, account: { address: '0x1' } });
             const result = assertPrerequisites(tmpDir, ['cluster_ready']);
             expect(result.ok).toBe(false);
-            expect(result.message).toMatch(/fsca cluster init/);
+            expect(result.message).toMatch(/arkheion cluster init/);
         });
 
         test('cluster_ready required, fully configured → ok', () => {
             writeConfig({
                 network: { rpc: 'x' },
                 account: { address: '0x1' },
-                fsca: {
+                arkheion: {
                     clusterAddress: '0xC',
                     multisigAddress: '0xM',
                     evokerManagerAddress: '0xE',
@@ -146,7 +146,7 @@ describe('preflight', () => {
             writeConfig({
                 network: { rpc: 'x' },
                 account: { address: '0x1' },
-                fsca: {
+                arkheion: {
                     clusterAddress: '0xC',
                     multisigAddress: '0xM',
                     evokerManagerAddress: '0xE',
@@ -155,14 +155,14 @@ describe('preflight', () => {
             });
             const result = assertPrerequisites(tmpDir, ['current_contract_selected']);
             expect(result.ok).toBe(false);
-            expect(result.message).toMatch(/fsca cluster choose/);
+            expect(result.message).toMatch(/arkheion cluster choose/);
         });
 
         test('current_contract_selected, currentOperating set → ok', () => {
             writeConfig({
                 network: { rpc: 'x' },
                 account: { address: '0x1' },
-                fsca: {
+                arkheion: {
                     clusterAddress: '0xC',
                     multisigAddress: '0xM',
                     evokerManagerAddress: '0xE',
@@ -178,7 +178,7 @@ describe('preflight', () => {
             writeConfig({ network: { rpc: 'x' }, account: { address: '0x1' } });
             const result = assertPrerequisites(tmpDir, ['current_contract_selected']);
             expect(result.ok).toBe(false);
-            expect(result.message).toMatch(/fsca cluster init/);
+            expect(result.message).toMatch(/arkheion cluster init/);
         });
     });
 
@@ -213,7 +213,7 @@ describe('preflight', () => {
             }, tmpDir)).rejects.toThrow('process.exit(1)');
 
             console.error = origError;
-            expect(logs.some(l => l.includes('fsca init'))).toBe(true);
+            expect(logs.some(l => l.includes('arkheion init'))).toBe(true);
             expect(exitSpy).toHaveBeenCalledWith(1);
         });
 
@@ -233,7 +233,7 @@ describe('preflight', () => {
             }, tmpDir)).rejects.toThrow('process.exit(1)');
 
             console.error = origError;
-            expect(logs.some(l => l.includes('fsca cluster init'))).toBe(true);
+            expect(logs.some(l => l.includes('arkheion cluster init'))).toBe(true);
             expect(exitSpy).toHaveBeenCalledWith(1);
         });
 

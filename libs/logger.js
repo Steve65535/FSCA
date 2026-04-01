@@ -1,9 +1,9 @@
 /**
- * FSCA CLI Output Logger
+ * Arkheion CLI Output Logger
  * Provides standardized colored output for the CLI.
  * 
  * Color Scheme:
- * - Title (FSCA CLI): Bright Purple (95)
+ * - Title (Arkheion CLI): Bright Purple (95)
  * - Command: Bright Blue (94)
  * - User Input: Light Bright Yellow (93)
  * - Result: Bright Green (92)
@@ -88,7 +88,7 @@ function logInfo(message) {
 function logDiagnostic(title, lines, level = 'error') {
     const color = level === 'error' ? COLORS.brightRed
         : level === 'warn' ? COLORS.brightYellow
-        : COLORS.brightCyan;
+            : COLORS.brightCyan;
     const prefix = level === 'error' ? '✗' : level === 'warn' ? '⚠' : 'ℹ';
     console.error(`${color}${COLORS.bold}${prefix} ${title}${COLORS.reset}`);
     for (const line of lines) {

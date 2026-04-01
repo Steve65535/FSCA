@@ -1,5 +1,5 @@
 /**
- * fsca cluster rollback --id <contractId> [--generation <n>] [--dry-run] [--yes]
+ * arkheion cluster rollback --id <contractId> [--generation <n>] [--dry-run] [--yes]
  *
  * Restores a deprecated contract version by:
  * 1. Validating target record (status=deprecated, bytecode exists on-chain)
@@ -42,7 +42,7 @@ const TEMPLATE_ABI = [
 
 function loadProjectConfig(rootDir) {
     const configPath = path.join(rootDir, 'project.json');
-    if (!fs.existsSync(configPath)) throw new Error('project.json not found. Run "fsca init" first.');
+    if (!fs.existsSync(configPath)) throw new Error('project.json not found. Run "arkheion init" first.');
     const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
     const rpcUrl = credentials.resolveRpcUrl(config, rootDir);
     const privateKey = credentials.resolvePrivateKey(config, rootDir);
@@ -52,7 +52,7 @@ function loadProjectConfig(rootDir) {
     config.account = config.account || {};
     config.network.rpc = rpcUrl;
     config.account.privateKey = privateKey;
-    if (!config.fsca?.clusterAddress) throw new Error('fsca.clusterAddress not configured. Run "fsca cluster init" first.');
+    if (!config.arkheion?.clusterAddress) throw new Error('arkheion.clusterAddress not configured. Run "arkheion cluster init" first.');
     return config;
 }
 
@@ -80,7 +80,7 @@ module.exports = async function rollback({ rootDir, args = {} }) {
 
         const contractId = Number(id);
         const config = loadProjectConfig(rootDir);
-        const allDeployed = config.fsca.alldeployedcontracts || [];
+        const allDeployed = config.arkheion.alldeployedcontracts || [];
 
         // 1. Find target record
         let targetRecord;
@@ -132,126 +132,126 @@ module.exports = async function rollback({ rootDir, args = {} }) {
 
         // 4. Read current contract's pod config for its snapshot (before unmounting)
         const signer = getSigner(config.account.privateKey, provider);
-        const clusterAddr = config.fsca.clusterAddress;
+        const clusterAddr = config.arkheion.clusterAddress;
         const clusterWrite = new ethers.Contract(clusterAddr, CLUSTER_ABI, signer);
 
         const lock = acquireLock(rootDir, clusterAddr, 'cluster rollback');
         try {
 
-        let currentActivePods = [];
-        let currentPassivePods = [];
-        try {
-            const currentContract = new ethers.Contract(currentAddr, TEMPLATE_ABI, provider);
-            const activeModules = await currentContract.getAllActiveModules();
-            const passiveModules = await currentContract.getAllPassiveModules();
-            currentActivePods = activeModules.map(m => ({ contractId: Number(m.contractId) }));
-            currentPassivePods = passiveModules.map(m => ({ contractId: Number(m.contractId) }));
-        } catch (e) {
-            console.warn(`  ⚠  Could not read current pod config: ${e.message}`);
-        }
-
-        const report = {
-            timestamp: new Date().toISOString(),
-            contractId,
-            fromGeneration: currentRecord.generation,
-            toGeneration: normalized.generation,
-            fromAddress: currentAddr,
-            toAddress: targetAddr,
-            podRestoreResults: [],
-            errors: [],
-        };
-
-        // Step A: deleteContract
-        writeCheckpoint(rootDir, { step: 'A', contractId, targetAddr, currentAddr });
-        console.log(`\n[1/3] Unmounting current contract #${contractId}...`);
-        await sendTx(() => clusterWrite.deleteContract(contractId), { label: `deleteContract #${contractId}` });
-        console.log(`      Unmounted: ${currentAddr}`);
-
-        // Step B: registerContract
-        writeCheckpoint(rootDir, { step: 'B', contractId, targetAddr, currentAddr });
-        console.log(`[2/3] Mounting target contract...`);
-        try {
-            await sendTx(() => clusterWrite.registerContract(contractId, registeredName, targetAddr), { label: `registerContract #${contractId}` });
-            console.log(`      Mounted: ${targetAddr}`);
-        } catch (e) {
-            report.errors.push(`Step B failed: ${e.message}`);
-            writeReport(rootDir, report);
-            console.error(`\n✗ Step B failed: ${e.message}`);
-            console.error(`  Recovery: fsca cluster mount ${contractId} ${registeredName} (after choosing ${targetAddr})`);
-            process.exit(1);
-        }
-
-        // Step C: restore pod edges from podSnapshot (resolve addresses from registry)
-        writeCheckpoint(rootDir, { step: 'C', contractId, targetAddr, currentAddr });
-        console.log(`[3/3] Restoring pod edges...`);
-        const podSnapshot = normalized.podSnapshot || { active: [], passive: [] };
-        const allPodIds = [
-            ...podSnapshot.active.map(p => ({ contractId: p.contractId, type: 'active' })),
-            ...podSnapshot.passive.map(p => ({ contractId: p.contractId, type: 'passive' })),
-        ];
-
-        for (const pod of allPodIds) {
+            let currentActivePods = [];
+            let currentPassivePods = [];
             try {
-                const entry = await clusterWrite.runner.provider.call({
-                    to: clusterAddr,
-                    data: new ethers.Interface(CLUSTER_ABI).encodeFunctionData('getById', [pod.contractId]),
-                });
-                const decoded = new ethers.Interface(CLUSTER_ABI).decodeFunctionResult('getById', entry);
-                const depAddr = decoded[0].contractAddr;
-                if (!depAddr || depAddr === ethers.ZeroAddress) {
-                    throw new Error(`contractId=${pod.contractId} not found in registry`);
-                }
-                if (pod.type === 'active') {
-                    await sendTx(() => clusterWrite.addActivePodAfterMount(targetAddr, depAddr, pod.contractId), { label: `addActivePod contractId=${pod.contractId}` });
-                } else {
-                    await sendTx(() => clusterWrite.addPassivePodAfterMount(targetAddr, depAddr, pod.contractId), { label: `addPassivePod contractId=${pod.contractId}` });
-                }
-                console.log(`      Restored ${pod.type} pod: contractId=${pod.contractId} → ${depAddr}`);
-                report.podRestoreResults.push({ contractId: pod.contractId, type: pod.type, address: depAddr, status: 'ok' });
+                const currentContract = new ethers.Contract(currentAddr, TEMPLATE_ABI, provider);
+                const activeModules = await currentContract.getAllActiveModules();
+                const passiveModules = await currentContract.getAllPassiveModules();
+                currentActivePods = activeModules.map(m => ({ contractId: Number(m.contractId) }));
+                currentPassivePods = passiveModules.map(m => ({ contractId: Number(m.contractId) }));
             } catch (e) {
-                console.warn(`      ⚠  Failed to restore ${pod.type} pod contractId=${pod.contractId}: ${e.message}`);
-                report.podRestoreResults.push({ contractId: pod.contractId, type: pod.type, status: 'failed', error: e.message });
-                report.errors.push(`Pod restore failed (${pod.type} contractId=${pod.contractId}): ${e.message}`);
+                console.warn(`  ⚠  Could not read current pod config: ${e.message}`);
             }
-        }
 
-        // 5. Update project.json
-        const timestamp = Math.floor(Date.now() / 1000);
-        config.fsca.alldeployedcontracts = (config.fsca.alldeployedcontracts || []).map(r => {
-            if (r.address && r.address.toLowerCase() === currentAddr.toLowerCase()) {
-                return { ...r, status: 'deprecated', podSnapshot: { active: currentActivePods, passive: currentPassivePods } };
-            }
-            if (r.address && r.address.toLowerCase() === targetAddr.toLowerCase()) {
-                return { ...r, status: 'mounted' };
-            }
-            return r;
-        });
+            const report = {
+                timestamp: new Date().toISOString(),
+                contractId,
+                fromGeneration: currentRecord.generation,
+                toGeneration: normalized.generation,
+                fromAddress: currentAddr,
+                toAddress: targetAddr,
+                podRestoreResults: [],
+                errors: [],
+            };
 
-        // Update runningcontracts
-        if (!config.fsca.runningcontracts) config.fsca.runningcontracts = [];
-        config.fsca.runningcontracts = config.fsca.runningcontracts.filter(
-            c => c.address && c.address.toLowerCase() !== currentAddr.toLowerCase()
-        );
-        config.fsca.runningcontracts.push({ name: registeredName, address: targetAddr, contractId, timeStamp: timestamp });
-        // Clean up unmountedcontracts — target address must not appear there after rollback
-        if (config.fsca.unmountedcontracts) {
-            config.fsca.unmountedcontracts = config.fsca.unmountedcontracts.filter(
-                c => c.address && c.address.toLowerCase() !== targetAddr.toLowerCase()
+            // Step A: deleteContract
+            writeCheckpoint(rootDir, { step: 'A', contractId, targetAddr, currentAddr });
+            console.log(`\n[1/3] Unmounting current contract #${contractId}...`);
+            await sendTx(() => clusterWrite.deleteContract(contractId), { label: `deleteContract #${contractId}` });
+            console.log(`      Unmounted: ${currentAddr}`);
+
+            // Step B: registerContract
+            writeCheckpoint(rootDir, { step: 'B', contractId, targetAddr, currentAddr });
+            console.log(`[2/3] Mounting target contract...`);
+            try {
+                await sendTx(() => clusterWrite.registerContract(contractId, registeredName, targetAddr), { label: `registerContract #${contractId}` });
+                console.log(`      Mounted: ${targetAddr}`);
+            } catch (e) {
+                report.errors.push(`Step B failed: ${e.message}`);
+                writeReport(rootDir, report);
+                console.error(`\n✗ Step B failed: ${e.message}`);
+                console.error(`  Recovery: arkheion cluster mount ${contractId} ${registeredName} (after choosing ${targetAddr})`);
+                process.exit(1);
+            }
+
+            // Step C: restore pod edges from podSnapshot (resolve addresses from registry)
+            writeCheckpoint(rootDir, { step: 'C', contractId, targetAddr, currentAddr });
+            console.log(`[3/3] Restoring pod edges...`);
+            const podSnapshot = normalized.podSnapshot || { active: [], passive: [] };
+            const allPodIds = [
+                ...podSnapshot.active.map(p => ({ contractId: p.contractId, type: 'active' })),
+                ...podSnapshot.passive.map(p => ({ contractId: p.contractId, type: 'passive' })),
+            ];
+
+            for (const pod of allPodIds) {
+                try {
+                    const entry = await clusterWrite.runner.provider.call({
+                        to: clusterAddr,
+                        data: new ethers.Interface(CLUSTER_ABI).encodeFunctionData('getById', [pod.contractId]),
+                    });
+                    const decoded = new ethers.Interface(CLUSTER_ABI).decodeFunctionResult('getById', entry);
+                    const depAddr = decoded[0].contractAddr;
+                    if (!depAddr || depAddr === ethers.ZeroAddress) {
+                        throw new Error(`contractId=${pod.contractId} not found in registry`);
+                    }
+                    if (pod.type === 'active') {
+                        await sendTx(() => clusterWrite.addActivePodAfterMount(targetAddr, depAddr, pod.contractId), { label: `addActivePod contractId=${pod.contractId}` });
+                    } else {
+                        await sendTx(() => clusterWrite.addPassivePodAfterMount(targetAddr, depAddr, pod.contractId), { label: `addPassivePod contractId=${pod.contractId}` });
+                    }
+                    console.log(`      Restored ${pod.type} pod: contractId=${pod.contractId} → ${depAddr}`);
+                    report.podRestoreResults.push({ contractId: pod.contractId, type: pod.type, address: depAddr, status: 'ok' });
+                } catch (e) {
+                    console.warn(`      ⚠  Failed to restore ${pod.type} pod contractId=${pod.contractId}: ${e.message}`);
+                    report.podRestoreResults.push({ contractId: pod.contractId, type: pod.type, status: 'failed', error: e.message });
+                    report.errors.push(`Pod restore failed (${pod.type} contractId=${pod.contractId}): ${e.message}`);
+                }
+            }
+
+            // 5. Update project.json
+            const timestamp = Math.floor(Date.now() / 1000);
+            config.arkheion.alldeployedcontracts = (config.arkheion.alldeployedcontracts || []).map(r => {
+                if (r.address && r.address.toLowerCase() === currentAddr.toLowerCase()) {
+                    return { ...r, status: 'deprecated', podSnapshot: { active: currentActivePods, passive: currentPassivePods } };
+                }
+                if (r.address && r.address.toLowerCase() === targetAddr.toLowerCase()) {
+                    return { ...r, status: 'mounted' };
+                }
+                return r;
+            });
+
+            // Update runningcontracts
+            if (!config.arkheion.runningcontracts) config.arkheion.runningcontracts = [];
+            config.arkheion.runningcontracts = config.arkheion.runningcontracts.filter(
+                c => c.address && c.address.toLowerCase() !== currentAddr.toLowerCase()
             );
-        }
-        config.fsca.currentOperating = targetAddr;
-        saveProjectConfig(rootDir, config);
+            config.arkheion.runningcontracts.push({ name: registeredName, address: targetAddr, contractId, timeStamp: timestamp });
+            // Clean up unmountedcontracts — target address must not appear there after rollback
+            if (config.arkheion.unmountedcontracts) {
+                config.arkheion.unmountedcontracts = config.arkheion.unmountedcontracts.filter(
+                    c => c.address && c.address.toLowerCase() !== targetAddr.toLowerCase()
+                );
+            }
+            config.arkheion.currentOperating = targetAddr;
+            saveProjectConfig(rootDir, config);
 
-        deleteCheckpoint(rootDir);
-        writeReport(rootDir, report);
+            deleteCheckpoint(rootDir);
+            writeReport(rootDir, report);
 
-        const failedPods = report.podRestoreResults.filter(r => r.status === 'failed');
-        if (failedPods.length > 0) {
-            console.log(`\n⚠  Rollback complete with ${failedPods.length} pod restore failure(s). See rollback-report.json.`);
-            console.log(`   Use "fsca cluster link" to manually restore failed pod edges.`);
-        } else {
-            console.log(`\n✓ Rollback complete: contractId=${contractId} → generation=${normalized.generation} at ${targetAddr}`);
-        }
+            const failedPods = report.podRestoreResults.filter(r => r.status === 'failed');
+            if (failedPods.length > 0) {
+                console.log(`\n⚠  Rollback complete with ${failedPods.length} pod restore failure(s). See rollback-report.json.`);
+                console.log(`   Use "arkheion cluster link" to manually restore failed pod edges.`);
+            } else {
+                console.log(`\n✓ Rollback complete: contractId=${contractId} → generation=${normalized.generation} at ${targetAddr}`);
+            }
 
         } finally {
             lock.release();

@@ -29,7 +29,7 @@ contract AccountStorage is normalTemplate {
     //   ID=2  TradeEngine（当前版本，热升级后地址自动更新）
     //
     // 扩展示例（未来新增 LendingEngine 时）：
-    //   ID=4  LendingEngine — 通过 fsca cluster link 添加 passivePod[4]
+    //   ID=4  LendingEngine — 通过 arkheion cluster link 添加 passivePod[4]
     //   然后在 setBalance/setUserData 上增加 passiveModuleVerification(4) 的重载
     //   或使用下方的 _verifyWriter modifier 统一校验
     // =========================================================================

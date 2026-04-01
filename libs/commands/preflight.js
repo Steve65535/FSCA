@@ -13,7 +13,7 @@ const path = require('path');
  *   uninitialized → initialized → cluster_ready
  *
  * Additional fine-grained requirement:
- *   current_contract_selected — requires fsca.currentOperating set
+ *   current_contract_selected — requires arkheion.currentOperating set
  */
 
 function inferState(rootDir) {
@@ -35,12 +35,12 @@ function inferState(rootDir) {
     }
 
     // cluster_ready: all 4 infra addresses must exist
-    const fsca = config.fsca || {};
+    const arkheion = config.arkheion || {};
     const hasCluster =
-        fsca.clusterAddress &&
-        (fsca.multisigAddress || fsca.multiSigAddress) &&
-        fsca.evokerManagerAddress &&
-        fsca.rightManagerAddress;
+        arkheion.clusterAddress &&
+        (arkheion.multisigAddress || arkheion.multiSigAddress) &&
+        arkheion.evokerManagerAddress &&
+        arkheion.rightManagerAddress;
 
     if (!hasCluster) {
         return { level: 'initialized', config };
@@ -53,15 +53,15 @@ function inferState(rootDir) {
  * Check if currentOperating is set
  */
 function hasCurrentContract(config) {
-    return !!(config && config.fsca && config.fsca.currentOperating);
+    return !!(config && config.arkheion && config.arkheion.currentOperating);
 }
 
 const STATE_ORDER = ['uninitialized', 'initialized', 'cluster_ready'];
 
 const REMEDIATION = {
-    initialized: 'Run "fsca init" first.',
-    cluster_ready: 'Run "fsca cluster init" first.',
-    current_contract_selected: 'Run "fsca cluster choose <address>" first.',
+    initialized: 'Run "arkheion init" first.',
+    cluster_ready: 'Run "arkheion cluster init" first.',
+    current_contract_selected: 'Run "arkheion cluster choose <address>" first.',
 };
 
 /**

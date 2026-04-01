@@ -2,9 +2,9 @@
 set -euo pipefail
 
 # =============================================================================
-# FSCA CBS Demo - 符合最佳实践的部署与升级脚本
+# Arkheion CBS Demo - 符合最佳实践的部署与升级脚本
 #
-# 基于《使用 FSCA CLI 构建链上微服务集群的最佳实践》编写
+# 基于《使用 Arkheion CLI 构建链上微服务集群的最佳实践》编写
 #
 # 模块拓扑（存储与逻辑分离）：
 #
@@ -35,10 +35,10 @@ set -euo pipefail
 #   G. 升级后验收
 #
 # 环境变量：
-#   FSCA_PRIVATE_KEY       - 部署账户私钥（必填）
-#   FSCA_ACCOUNT_ADDRESS   - 部署账户地址（必填）
+#   Arkheion_PRIVATE_KEY       - 部署账户私钥（必填）
+#   Arkheion_ACCOUNT_ADDRESS   - 部署账户地址（必填）
 #   SEI_TESTNET_RPC        - RPC 地址（可选，默认 Sei testnet）
-#   FSCA_WORKDIR           - 工作目录（可选）
+#   Arkheion_WORKDIR           - 工作目录（可选）
 #   CLUSTER_THRESHOLD      - 多签阈值（可选，默认 1）
 # =============================================================================
 
@@ -52,12 +52,12 @@ RPC_URL="${SEI_TESTNET_RPC:-https://evm-rpc-testnet.sei-apis.com}"
 CHAIN_ID="1328"
 BLOCK_CONFIRMATIONS="1"
 THRESHOLD="${CLUSTER_THRESHOLD:-1}"
-WORKDIR="${FSCA_WORKDIR:-${ROOT_DIR}/fsca-demo-workspace}"
+WORKDIR="${Arkheion_WORKDIR:-${ROOT_DIR}/arkheion-demo-workspace}"
 
 # ─── 前置检查 ───────────────────────────────────────────────────────────────
 
-if ! command -v fsca >/dev/null 2>&1; then
-  echo "ERROR: 'fsca' command not found. Run: npm link"
+if ! command -v arkheion >/dev/null 2>&1; then
+  echo "ERROR: 'arkheion' command not found. Run: npm link"
   exit 1
 fi
 
@@ -66,10 +66,10 @@ if [ ! -d "${SRC_CONTRACTS_DIR}" ]; then
   exit 1
 fi
 
-if [ -z "${FSCA_PRIVATE_KEY:-}" ] || [ -z "${FSCA_ACCOUNT_ADDRESS:-}" ]; then
+if [ -z "${Arkheion_PRIVATE_KEY:-}" ] || [ -z "${Arkheion_ACCOUNT_ADDRESS:-}" ]; then
   echo "ERROR: missing env vars."
-  echo "  export FSCA_PRIVATE_KEY=<your-private-key>"
-  echo "  export FSCA_ACCOUNT_ADDRESS=<your-address>"
+  echo "  export Arkheion_PRIVATE_KEY=<your-private-key>"
+  echo "  export Arkheion_ACCOUNT_ADDRESS=<your-address>"
   exit 1
 fi
 
@@ -99,7 +99,7 @@ get_addr() {
   local name="$1"
   node -e "
     const c = require('./project.json');
-    const found = c.fsca.alldeployedcontracts.find(x => x.name === '${name}');
+    const found = c.arkheion.alldeployedcontracts.find(x => x.name === '${name}');
     if (!found) { console.error('Contract not found: ${name}'); process.exit(1); }
     console.log(found.address);
   "
@@ -124,7 +124,7 @@ get_registry_addr() {
         if (fs.existsSync(p)) { abi = JSON.parse(fs.readFileSync(p, 'utf8')).abi; break; }
       }
       if (!abi) throw new Error('ClusterManager ABI not found');
-      const cluster = new ethers.Contract(cfg.fsca.clusterAddress, abi, provider);
+      const cluster = new ethers.Contract(cfg.arkheion.clusterAddress, abi, provider);
       const r = await cluster.getById(Number('${id}'));
       console.log(r.contractAddr);
     })().catch(e => { console.error(e.message); process.exit(1); });
@@ -133,7 +133,7 @@ get_registry_addr() {
 
 # ─── 开始 ───────────────────────────────────────────────────────────────────
 
-banner "FSCA CBS Demo - Best Practice Deployment & Upgrade"
+banner "Arkheion CBS Demo - Best Practice Deployment & Upgrade"
 
 echo "Configuration:"
 echo "  Network:   ${NETWORK_NAME}"
@@ -165,21 +165,21 @@ mkdir -p "${WORKDIR}"
 cp -R "${SRC_CONTRACTS_DIR}" "${WORKDIR}/contracts"
 cd "${WORKDIR}"
 
-step "A.2 fsca init"
-run fsca init \
+step "A.2 arkheion init"
+run arkheion init \
   --networkName "${NETWORK_NAME}" \
   --rpc "${RPC_URL}" \
   --chainId "${CHAIN_ID}" \
   --blockConfirmations "${BLOCK_CONFIRMATIONS}" \
-  --accountPrivateKey "${FSCA_PRIVATE_KEY}" \
-  --address "${FSCA_ACCOUNT_ADDRESS}"
+  --accountPrivateKey "${Arkheion_PRIVATE_KEY}" \
+  --address "${Arkheion_ACCOUNT_ADDRESS}"
 
-step "A.3 fsca cluster init"
-run fsca cluster init --threshold "${THRESHOLD}"
+step "A.3 arkheion cluster init"
+run arkheion cluster init --threshold "${THRESHOLD}"
 
 step "A.4 Verify cluster infrastructure"
-run fsca wallet owners
-run fsca cluster operator list
+run arkheion wallet owners
+run arkheion cluster operator list
 
 # ═════════════════════════════════════════════════════════════════════════════
 # Step B: 部署业务 Pod（最佳实践 §3 步骤 B）
@@ -189,13 +189,13 @@ run fsca cluster operator list
 banner "Step B: Deploy Business Pods (deploy only, no mount yet)"
 
 step "B.1 Deploy L0 Data Layer: AccountStorage"
-run fsca deploy --contract AccountStorage --description AccountStorage
+run arkheion deploy --contract AccountStorage --description AccountStorage
 
 step "B.2 Deploy L1 Business Layer: TradeEngineV1"
-run fsca deploy --contract TradeEngineV1 --description TradeEngineV1
+run arkheion deploy --contract TradeEngineV1 --description TradeEngineV1
 
 step "B.3 Deploy L1 Business Layer: RiskGuardV1"
-run fsca deploy --contract RiskGuardV1 --description RiskGuardV1
+run arkheion deploy --contract RiskGuardV1 --description RiskGuardV1
 
 # 记录地址
 STORAGE_ADDR="$(get_addr AccountStorage)"
@@ -223,11 +223,11 @@ echo "  RiskGuardV1    (ID=3): ${RISK_ADDR}"
 banner "Step C: Configure Links (before mount)"
 
 step "C.1 Configure TradeEngineV1 active pods"
-run fsca cluster choose "${TRADE_V1_ADDR}"
+run arkheion cluster choose "${TRADE_V1_ADDR}"
 echo "  Link: TradeEngine --active[1]--> AccountStorage"
-run fsca cluster link positive "${STORAGE_ADDR}" 1
+run arkheion cluster link positive "${STORAGE_ADDR}" 1
 echo "  Link: TradeEngine --active[3]--> RiskGuard"
-run fsca cluster link positive "${RISK_ADDR}" 3
+run arkheion cluster link positive "${RISK_ADDR}" 3
 
 # AccountStorage 和 RiskGuard 的 passivePod 不需要手动配置
 # mount 时 EvokerManager 会自动根据 TradeEngine 的 activePod 建立反向边：
@@ -250,19 +250,19 @@ run fsca cluster link positive "${RISK_ADDR}" 3
 banner "Step D: Mount to Cluster (topological order)"
 
 step "D.1 Mount L0: AccountStorage (ID=1)"
-run fsca cluster choose "${STORAGE_ADDR}"
-run fsca cluster mount 1 AccountStorage
+run arkheion cluster choose "${STORAGE_ADDR}"
+run arkheion cluster mount 1 AccountStorage
 
 step "D.2 Mount L1: RiskGuardV1 (ID=3)"
-run fsca cluster choose "${RISK_ADDR}"
-run fsca cluster mount 3 RiskGuardV1
+run arkheion cluster choose "${RISK_ADDR}"
+run arkheion cluster mount 3 RiskGuardV1
 
 step "D.3 Mount L1: TradeEngineV1 (ID=2)"
 echo "  This will auto-create bidirectional edges:"
 echo "    AccountStorage.passivePod[2] = TradeEngine"
 echo "    RiskGuard.passivePod[2] = TradeEngine"
-run fsca cluster choose "${TRADE_V1_ADDR}"
-run fsca cluster mount 2 TradeEngineV1
+run arkheion cluster choose "${TRADE_V1_ADDR}"
+run arkheion cluster mount 2 TradeEngineV1
 
 # ═════════════════════════════════════════════════════════════════════════════
 # Step E: 验收检查（最佳实践 §7）
@@ -271,27 +271,27 @@ run fsca cluster mount 2 TradeEngineV1
 banner "Step E: Post-Mount Verification"
 
 step "E.1 Verify mounted contracts"
-run fsca cluster list mounted
+run arkheion cluster list mounted
 
 step "E.2 Verify cluster topology"
-run fsca cluster graph
+run arkheion cluster graph
 
 step "E.3 Verify individual contract info"
-run fsca cluster info 1
-run fsca cluster info 2
-run fsca cluster info 3
+run arkheion cluster info 1
+run arkheion cluster info 2
+run arkheion cluster info 3
 
 step "E.4 Verify TradeEngine active modules"
-run fsca cluster choose "${TRADE_V1_ADDR}"
-run fsca normal get modules active
+run arkheion cluster choose "${TRADE_V1_ADDR}"
+run arkheion normal get modules active
 
 step "E.5 Verify AccountStorage passive modules"
-run fsca cluster choose "${STORAGE_ADDR}"
-run fsca normal get modules passive
+run arkheion cluster choose "${STORAGE_ADDR}"
+run arkheion normal get modules passive
 
 step "E.6 Verify RiskGuard passive modules"
-run fsca cluster choose "${RISK_ADDR}"
-run fsca normal get modules passive
+run arkheion cluster choose "${RISK_ADDR}"
+run arkheion normal get modules passive
 
 echo ""
 echo "✓ All verifications passed. Cluster is operational."
@@ -320,7 +320,7 @@ BEFORE_ADDR="$(get_registry_addr 2)"
 echo "  Registry ID=2 before upgrade: ${BEFORE_ADDR}"
 
 step "F.2 Execute hot upgrade"
-run fsca cluster upgrade --id 2 --contract TradeEngineV2
+run arkheion cluster upgrade --id 2 --contract TradeEngineV2
 
 step "F.3 Verify upgrade result"
 AFTER_ADDR="$(get_registry_addr 2)"
@@ -345,28 +345,28 @@ fi
 banner "Step G: Post-Upgrade Verification"
 
 step "G.1 Verify mounted contracts"
-run fsca cluster list mounted
+run arkheion cluster list mounted
 
 step "G.2 Verify cluster topology (should be identical structure)"
-run fsca cluster graph
+run arkheion cluster graph
 
 step "G.3 Verify TradeEngineV2 active modules (should match V1)"
-run fsca cluster choose "${AFTER_ADDR}"
-run fsca normal get modules active
+run arkheion cluster choose "${AFTER_ADDR}"
+run arkheion normal get modules active
 
 step "G.4 Verify AccountStorage passive modules (should point to V2)"
-run fsca cluster choose "${STORAGE_ADDR}"
-run fsca normal get modules passive
+run arkheion cluster choose "${STORAGE_ADDR}"
+run arkheion normal get modules passive
 
 step "G.5 Verify RiskGuard passive modules (should point to V2)"
-run fsca cluster choose "${RISK_ADDR}"
-run fsca normal get modules passive
+run arkheion cluster choose "${RISK_ADDR}"
+run arkheion normal get modules passive
 
 # ═════════════════════════════════════════════════════════════════════════════
 # 完成
 # ═════════════════════════════════════════════════════════════════════════════
 
-banner "FSCA CBS Demo - COMPLETE"
+banner "Arkheion CBS Demo - COMPLETE"
 
 echo "Summary:"
 echo "  ✓ Cluster infrastructure deployed (MultiSig + ClusterManager + EvokerManager + ProxyWallet)"

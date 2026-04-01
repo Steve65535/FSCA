@@ -10,7 +10,7 @@ const logger = require('../../logger');
 function loadProjectConfig(rootDir) {
     const configPath = path.join(rootDir, 'project.json');
     if (!fs.existsSync(configPath)) {
-        throw new Error('project.json not found. Please run "fsca init" first.');
+        throw new Error('project.json not found. Please run "arkheion init" first.');
     }
     return JSON.parse(fs.readFileSync(configPath, 'utf-8'));
 }
@@ -22,24 +22,24 @@ function findContractMetadata(config, address) {
     const addr = address.toLowerCase();
 
     // 先在 runningcontracts 中查找
-    if (config.fsca?.runningcontracts) {
-        const found = config.fsca.runningcontracts.find(
+    if (config.arkheion?.runningcontracts) {
+        const found = config.arkheion.runningcontracts.find(
             c => c.address.toLowerCase() === addr
         );
         if (found) return { ...found, status: 'MOUNTED' };
     }
 
     // 再在 unmountedcontracts 中查找
-    if (config.fsca?.unmountedcontracts) {
-        const found = config.fsca.unmountedcontracts.find(
+    if (config.arkheion?.unmountedcontracts) {
+        const found = config.arkheion.unmountedcontracts.find(
             c => c.address.toLowerCase() === addr
         );
         if (found) return { ...found, status: 'UNMOUNTED' };
     }
 
     // 最后在 alldeployedcontracts 中查找
-    if (config.fsca?.alldeployedcontracts) {
-        const found = config.fsca.alldeployedcontracts.find(
+    if (config.arkheion?.alldeployedcontracts) {
+        const found = config.arkheion.alldeployedcontracts.find(
             c => c.address.toLowerCase() === addr
         );
         if (found) return { ...found, status: 'UNKNOWN' };
@@ -51,13 +51,13 @@ function findContractMetadata(config, address) {
 module.exports = async function current({ rootDir, args = {} }) {
     try {
         const config = loadProjectConfig(rootDir);
-        const currentAddr = config.fsca?.currentOperating;
+        const currentAddr = config.arkheion?.currentOperating;
 
         if (!currentAddr) {
             console.log(`${logger.COLORS.brightYellow}No contract currently selected.${logger.COLORS.reset}`);
             console.log('');
-            console.log(`Use ${logger.COLORS.brightBlue}fsca cluster choose <address>${logger.COLORS.reset} to select a contract.`);
-            console.log(`Or ${logger.COLORS.brightBlue}fsca deploy "ContractName"${logger.COLORS.reset} to deploy a new one.`);
+            console.log(`Use ${logger.COLORS.brightBlue}arkheion cluster choose <address>${logger.COLORS.reset} to select a contract.`);
+            console.log(`Or ${logger.COLORS.brightBlue}arkheion deploy "ContractName"${logger.COLORS.reset} to deploy a new one.`);
             return;
         }
 
@@ -106,7 +106,7 @@ module.exports = async function current({ rootDir, args = {} }) {
 
         // 提示
         if (metadata?.status === 'UNMOUNTED') {
-            console.log(`${COLORS.brightYellow}💡 Tip: Use 'fsca cluster mount <id> <name>' to mount this contract.${COLORS.reset}`);
+            console.log(`${COLORS.brightYellow}💡 Tip: Use 'arkheion cluster mount <id> <name>' to mount this contract.${COLORS.reset}`);
         } else if (metadata?.status === 'MOUNTED') {
             console.log(`${COLORS.brightGreen}✓ This contract is active and ready for operations.${COLORS.reset}`);
         }

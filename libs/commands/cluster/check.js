@@ -1,5 +1,5 @@
 /**
- * fsca cluster check
+ * arkheion cluster check
  * 静态检查：扫描注解 → ID 冲突检测 → pod 级环检测 → 函数级环检测
  * 不执行任何链上操作，不部署，不挂载。
  */
@@ -33,7 +33,7 @@ module.exports = async function check({ rootDir }) {
 
     // Annotation errors exist even if parsed.length === 0
     if (parsed.length === 0 && errors.length === 0 && warnings.length === 0) {
-        console.log('No contracts with @fsca-auto yes found. Nothing to check.');
+        console.log('No contracts with @arkheion-auto yes found. Nothing to check.');
         return;
     }
 
@@ -53,13 +53,13 @@ module.exports = async function check({ rootDir }) {
     const hasWarnings = podCycles.length > 0 || warnings.length > 0;
 
     if (!hasFatal && !hasWarnings) {
-        console.log('\n✓ All checks passed. Safe to run "fsca cluster auto".');
+        console.log('\n✓ All checks passed. Safe to run "arkheion cluster auto".');
     } else if (hasFatal) {
         console.log('\n✗ Check completed with errors. Some pod links will be skipped during assembly.');
-        console.log('  Review the diagnostics above, then run "fsca cluster auto" to proceed.');
+        console.log('  Review the diagnostics above, then run "arkheion cluster auto" to proceed.');
         process.exit(1);
     } else {
         console.log('\n⚠  Check completed with warnings. Assembly will handle pod cycles automatically.');
-        console.log('  Run "fsca cluster auto" to proceed.');
+        console.log('  Run "arkheion cluster auto" to proceed.');
     }
 };

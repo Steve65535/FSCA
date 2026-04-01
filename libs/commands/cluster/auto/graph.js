@@ -12,7 +12,7 @@ function buildGraph(contracts) {
     // nodes: Map<id, contract>
     const nodes = new Map();
     for (const c of contracts) {
-        nodes.set(c.fscaId, c);
+        nodes.set(c.arkheionId, c);
     }
 
     // adjacency: Map<id, Set<id>>  (from → to means "from must come before to")
@@ -22,12 +22,12 @@ function buildGraph(contracts) {
     for (const c of contracts) {
         for (const depId of c.activePods) {
             if (nodes.has(depId)) {
-                adjacency.get(depId).add(c.fscaId);
+                adjacency.get(depId).add(c.arkheionId);
             }
         }
         for (const depId of c.passivePods) {
             if (nodes.has(depId)) {
-                adjacency.get(depId).add(c.fscaId);
+                adjacency.get(depId).add(c.arkheionId);
             }
         }
     }

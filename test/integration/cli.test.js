@@ -68,7 +68,7 @@ describe('CLI 集成测试', () => {
   // help 命令
   // ──────────────────────────────────────────────
   describe('help 命令', () => {
-    it('fsca help 调用成功（handler 存在）', () => {
+    it('arkheion help 调用成功（handler 存在）', () => {
       const r = runCLI(['help']);
       // help handler 存在，不应该打印 "Failed to load handler" 类的错误
       expect(r.stdout + r.stderr).not.toMatch(/failed to load handler/i);
@@ -123,13 +123,13 @@ describe('CLI 集成测试', () => {
     it('deploy before init → exit code 1', () => {
       const r = runCLI(['deploy', '--contract', 'Foo'], {}, emptyDir);
       expect(r.code).toBe(1);
-      expect(r.stderr).toMatch(/fsca init/);
+      expect(r.stderr).toMatch(/arkheion init/);
     });
 
     it('cluster init before init → exit code 1', () => {
       const r = runCLI(['cluster', 'init'], {}, emptyDir);
       expect(r.code).toBe(1);
-      expect(r.stderr).toMatch(/fsca init/);
+      expect(r.stderr).toMatch(/arkheion init/);
     });
 
     it('cluster mount before cluster init → exit code 1', () => {
@@ -141,7 +141,7 @@ describe('CLI 集成测试', () => {
 
       const r = runCLI(['cluster', 'mount', '1', 'Test'], {}, emptyDir);
       expect(r.code).toBe(1);
-      expect(r.stderr).toMatch(/fsca cluster init/);
+      expect(r.stderr).toMatch(/arkheion cluster init/);
 
       fs.unlinkSync(projPath);
     });

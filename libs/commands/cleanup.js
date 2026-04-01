@@ -13,7 +13,7 @@ const VALID_MODES = ['keep', 'soft', 'hard'];
  */
 function resolveCleanupMode(args, projectConfig) {
     const fromArgs = args && args.cleanup;
-    const fromConfig = projectConfig && projectConfig.fsca && projectConfig.fsca.cleanupPolicy && projectConfig.fsca.cleanupPolicy.defaultMode;
+    const fromConfig = projectConfig && projectConfig.arkheion && projectConfig.arkheion.cleanupPolicy && projectConfig.arkheion.cleanupPolicy.defaultMode;
     const mode = fromArgs || fromConfig || 'keep';
     if (!VALID_MODES.includes(mode)) {
         throw new Error(`Invalid cleanup mode "${mode}". Must be one of: keep, soft, hard`);

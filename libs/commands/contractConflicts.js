@@ -142,7 +142,7 @@ function scanAllConflicts(rootDir) {
 }
 
 /**
- * 扫描 contracts/undeployed 下所有 .sol 文件的 @fsca-id 注解冲突
+ * 扫描 contracts/undeployed 下所有 .sol 文件的 @arkheion-id 注解冲突
  * 同一 contractId 被不同合约名复用 → 冲突
  * @param {string} rootDir
  * @returns {{ idConflicts: Object[] }}
@@ -158,8 +158,8 @@ function scanIdConflicts(rootDir) {
     for (const filePath of allSources) {
         const source = fs.readFileSync(filePath, 'utf-8');
 
-        // Extract @fsca-id annotation
-        const idMatch = source.match(/@fsca-id\s+(\d+)/);
+        // Extract @arkheion-id annotation
+        const idMatch = source.match(/@arkheion-id\s+(\d+)/);
         if (!idMatch) continue;
         const contractId = parseInt(idMatch[1], 10);
 
@@ -230,7 +230,7 @@ function failOnAllConflicts(conflicts) {
     if (idConflicts.length > 0) {
         console.error(`  Contract ID conflicts (${idConflicts.length}):`);
         for (const { contractId, entries } of idConflicts) {
-            console.error(`    @fsca-id ${contractId} used by multiple contracts:`);
+            console.error(`    @arkheion-id ${contractId} used by multiple contracts:`);
             for (const { contractName, filePath } of entries) console.error(`      - ${contractName} (${filePath})`);
         }
         console.error('');
@@ -242,7 +242,7 @@ function failOnAllConflicts(conflicts) {
         hints.push('remove duplicate .sol files from contracts/undeployed/ subdirectories');
     }
     if (idConflicts.length > 0) {
-        hints.push('ensure each @fsca-id is used by only one contract');
+        hints.push('ensure each @arkheion-id is used by only one contract');
     }
     throw new Error(`${total} contract conflict(s) detected. ${hints.join('; ')}.`);
 }

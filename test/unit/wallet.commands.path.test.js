@@ -14,7 +14,7 @@ const ethers = require('ethers');
 const BASE_CONFIG = {
     network: { rpc: 'http://localhost:8545' },
     account: { privateKey: '0x' + 'a'.repeat(64) },
-    fsca: { multisigAddress: '0x' + '1'.repeat(40) },
+    arkheion: { multisigAddress: '0x' + '1'.repeat(40) },
 };
 
 const MINIMAL_ABI = [
@@ -30,7 +30,7 @@ const MINIMAL_ABI = [
 ];
 
 function makeTmpDir() {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fsca-wallet-test-'));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'arkheion-wallet-test-'));
     fs.writeFileSync(path.join(dir, 'project.json'), JSON.stringify(BASE_CONFIG), 'utf-8');
     const artifactDir = path.join(dir, 'artifacts', 'contracts', 'undeployed', 'wallet', 'multisigwallet.sol');
     fs.mkdirSync(artifactDir, { recursive: true });
@@ -81,8 +81,8 @@ function resetStub() {
 beforeEach(() => {
     jest.clearAllMocks();
     jest.spyOn(process, 'exit').mockImplementation(() => { throw new Error('process.exit'); });
-    jest.spyOn(console, 'log').mockImplementation(() => {});
-    jest.spyOn(console, 'error').mockImplementation(() => {});
+    jest.spyOn(console, 'log').mockImplementation(() => { });
+    jest.spyOn(console, 'error').mockImplementation(() => { });
     mockAcquireLock.mockReturnValue({ release: jest.fn() });
     mockSendTx.mockResolvedValue({ logs: [] });
     // Patch ethers.Contract and ethers.ethers.Contract to return stub

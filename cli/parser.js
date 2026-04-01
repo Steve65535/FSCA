@@ -15,18 +15,18 @@ class CommandParser {
    */
   parse(args) {
     if (!args || args.length === 0) {
-      return { 
-        command: null, 
-        subcommands: [], 
-        args: {}, 
+      return {
+        command: null,
+        subcommands: [],
+        args: {},
         handler: null,
-        config: null 
+        config: null
       };
     }
 
     // 查找匹配的命令路径
     const result = this.findCommand(this.commandsConfig, args);
-    
+
     if (!result) {
       return {
         command: null,
@@ -146,7 +146,7 @@ class CommandParser {
       }
     }
 
-    // 将位置参数按 params 定义顺序映射到命名参数，兼容 `fsca wallet confirm 0` 这类用法
+    // 将位置参数按 params 定义顺序映射到命名参数，兼容 `arkheion wallet confirm 0` 这类用法
     const paramKeys = Object.keys(params);
     for (let i = 0; i < positionalValues.length && i < paramKeys.length; i++) {
       const key = paramKeys[i];
@@ -188,7 +188,7 @@ class CommandParser {
    */
   getHelp(commandPath = []) {
     let config = this.commandsConfig;
-    
+
     // 导航到指定路径
     for (const segment of commandPath) {
       if (config.commands && config.commands[segment]) {
@@ -199,7 +199,7 @@ class CommandParser {
     }
 
     const lines = [];
-    
+
     if (config.description) {
       lines.push(`Description: ${config.description}`);
       lines.push('');

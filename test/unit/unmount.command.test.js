@@ -4,7 +4,7 @@ const os = require('os');
 const ethers = require('ethers');
 
 function makeTmpDir() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'fsca-unmount-test-'));
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'arkheion-unmount-test-'));
 }
 
 function writeProjectJson(dir, data) {
@@ -27,7 +27,7 @@ function baseProject() {
   return {
     network: { rpc: 'http://127.0.0.1:8545' },
     account: { privateKey: '0x' + 'a'.repeat(64) },
-    fsca: {
+    arkheion: {
       clusterAddress: '0x' + '1'.repeat(40),
       currentOperating: '0x' + 'b'.repeat(40),
       runningcontracts: [
@@ -52,9 +52,9 @@ const contractStub = {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  jest.spyOn(console, 'log').mockImplementation(() => {});
-  jest.spyOn(console, 'warn').mockImplementation(() => {});
-  jest.spyOn(console, 'error').mockImplementation(() => {});
+  jest.spyOn(console, 'log').mockImplementation(() => { });
+  jest.spyOn(console, 'warn').mockImplementation(() => { });
+  jest.spyOn(console, 'error').mockImplementation(() => { });
   jest.spyOn(process, 'exit').mockImplementation((code) => {
     throw new Error(`process.exit:${code}`);
   });
@@ -85,8 +85,8 @@ describe('unmount command — real unmount.js path', () => {
     await unmount({ rootDir: dir, args: { id: '200' } });
 
     const updated = readProjectJson(dir);
-    expect(updated.fsca.runningcontracts).toEqual([]);
-    expect(updated.fsca.unmountedcontracts).toEqual([
+    expect(updated.arkheion.runningcontracts).toEqual([]);
+    expect(updated.arkheion.unmountedcontracts).toEqual([
       expect.objectContaining({
         name: 'SwapEngine',
         address: '0x' + 'b'.repeat(40),
@@ -103,16 +103,16 @@ describe('unmount command — real unmount.js path', () => {
     const dir = makeTmpDir();
     writeClusterArtifact(dir);
     const config = baseProject();
-    config.fsca.runningcontracts = [];
-    config.fsca.unmountedcontracts = [{ name: 'Old', address: '0x' + 'c'.repeat(40), contractId: null }];
+    config.arkheion.runningcontracts = [];
+    config.arkheion.unmountedcontracts = [{ name: 'Old', address: '0x' + 'c'.repeat(40), contractId: null }];
     writeProjectJson(dir, config);
 
     const unmount = require('../../libs/commands/cluster/unmount');
     await unmount({ rootDir: dir, args: { id: '200' } });
 
     const updated = readProjectJson(dir);
-    expect(updated.fsca.runningcontracts).toEqual([]);
-    expect(updated.fsca.unmountedcontracts).toEqual([{ name: 'Old', address: '0x' + 'c'.repeat(40), contractId: null }]);
+    expect(updated.arkheion.runningcontracts).toEqual([]);
+    expect(updated.arkheion.unmountedcontracts).toEqual([{ name: 'Old', address: '0x' + 'c'.repeat(40), contractId: null }]);
     expect(console.warn).toHaveBeenCalledWith(expect.stringContaining("not found in local 'runningcontracts' cache."));
   });
 
@@ -120,7 +120,7 @@ describe('unmount command — real unmount.js path', () => {
     const dir = makeTmpDir();
     writeClusterArtifact(dir);
     const config = baseProject();
-    config.fsca.alldeployedcontracts = [
+    config.arkheion.alldeployedcontracts = [
       { name: 'SwapEngine', address: '0x' + 'b'.repeat(40), contractId: 200, status: 'mounted', generation: 1 },
     ];
     writeProjectJson(dir, config);
@@ -129,6 +129,6 @@ describe('unmount command — real unmount.js path', () => {
     await unmount({ rootDir: dir, args: { id: '200' } });
 
     const updated = readProjectJson(dir);
-    expect(updated.fsca.alldeployedcontracts[0].status).toBe('deployed');
+    expect(updated.arkheion.alldeployedcontracts[0].status).toBe('deployed');
   });
 });

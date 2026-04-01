@@ -13,7 +13,7 @@ const path = require('path');
 const os = require('os');
 
 function makeTmpDir() {
-    return fs.mkdtempSync(path.join(os.tmpdir(), 'fsca-cp-test-'));
+    return fs.mkdtempSync(path.join(os.tmpdir(), 'arkheion-cp-test-'));
 }
 
 // ─── Checkpoint file helpers (shared logic extracted for testing) ──────────────

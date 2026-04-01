@@ -64,7 +64,7 @@ module.exports = function analyze(rootDir) {
 
     // 2. Parse annotations + ID conflict detection
     const parsed = [];
-    const idMap = new Map(); // fscaId → contractName
+    const idMap = new Map(); // arkheionId → contractName
 
     for (const { filePath, contractName, sourceCode } of scanned) {
         const result = parse(sourceCode, contractName);
@@ -76,31 +76,31 @@ module.exports = function analyze(rootDir) {
                 `Contract : ${contractName}`,
                 `File     : ${filePath}`,
                 `Problem  : ${result.error}`,
-                `Fix      : Add "// @fsca-id <number>" above the contract declaration`,
+                `Fix      : Add "// @arkheion-id <number>" above the contract declaration`,
             ], 'warn');
             continue;
         }
 
-        if (idMap.has(result.fscaId)) {
-            const conflictName = idMap.get(result.fscaId);
+        if (idMap.has(result.arkheionId)) {
+            const conflictName = idMap.get(result.arkheionId);
             const conflictFile = parsed.find(p => p.contractName === conflictName)?.filePath || '(unknown)';
             logDiagnostic('ID conflict — aborted', [
-                `Duplicate ID : @fsca-id ${result.fscaId}`,
+                `Duplicate ID : @arkheion-id ${result.arkheionId}`,
                 `Contract A   : ${conflictName}`,
                 `File A       : ${conflictFile}`,
                 `Contract B   : ${contractName}`,
                 `File B       : ${filePath}`,
-                `Fix          : Each contract must have a unique @fsca-id value`,
+                `Fix          : Each contract must have a unique @arkheion-id value`,
             ], 'error');
-            throw new Error(`ID conflict: @fsca-id ${result.fscaId} used by both "${conflictName}" and "${contractName}"`);
+            throw new Error(`ID conflict: @arkheion-id ${result.arkheionId} used by both "${conflictName}" and "${contractName}"`);
         }
 
-        idMap.set(result.fscaId, contractName);
+        idMap.set(result.arkheionId, contractName);
         parsed.push({ ...result, filePath, sourceCode });
     }
 
-    const idToName = new Map(parsed.map(c => [c.fscaId, c.contractName]));
-    const idToContract = new Map(parsed.map(c => [c.fscaId, c]));
+    const idToName = new Map(parsed.map(c => [c.arkheionId, c.contractName]));
+    const idToContract = new Map(parsed.map(c => [c.arkheionId, c]));
 
     // 3. Pod-level dependency graph + cycle detection + topo sort
     const graph = buildGraph(parsed);

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * FSCA CLI 入口文件
+ * Arkheion CLI 入口文件
  * 命令行工具主程序
  */
 
@@ -11,15 +11,15 @@ const fs = require('fs');
 const path = require('path');
 const logger = require('../libs/logger');
 const credentials = require('../wallet/credentials');
-const { attachFileLogger } = require('../libs/fsca-logger');
+const { attachFileLogger } = require('../libs/arkheion-logger');
 
 credentials.loadEnvFile(process.cwd());
 
 // Attach file logger — writes all console output to logs/<date>.log
-// Only activate when a project.json exists (i.e. inside an fsca project)
+// Only activate when a project.json exists (i.e. inside an arkheion project)
 const projectJsonPath = path.join(process.cwd(), 'project.json');
 if (fs.existsSync(projectJsonPath)) {
-    attachFileLogger(process.cwd());
+  attachFileLogger(process.cwd());
 }
 
 // 加载命令配置

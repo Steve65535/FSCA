@@ -6,7 +6,7 @@ const path = require('path');
 const { scanContractConflicts, scanAllConflicts, scanIdConflicts, failOnConflict, failOnAllConflicts } = require('../../libs/commands/contractConflicts');
 
 function mkTmp() {
-    return fs.mkdtempSync(path.join(os.tmpdir(), 'fsca-conflicts-'));
+    return fs.mkdtempSync(path.join(os.tmpdir(), 'arkheion-conflicts-'));
 }
 
 function mkdirp(p) {
@@ -160,27 +160,27 @@ describe('scanIdConflicts', () => {
         expect(idConflicts).toHaveLength(0);
     });
 
-    test('single contract with @fsca-id → no conflict', () => {
+    test('single contract with @arkheion-id → no conflict', () => {
         writeFile(path.join(tmp, 'contracts', 'undeployed', 'A.sol'),
-            '// @fsca-id 1\ncontract TradeEngine is normalTemplate {}');
+            '// @arkheion-id 1\ncontract TradeEngine is normalTemplate {}');
         const { idConflicts } = scanIdConflicts(tmp);
         expect(idConflicts).toHaveLength(0);
     });
 
     test('two contracts with different IDs → no conflict', () => {
         writeFile(path.join(tmp, 'contracts', 'undeployed', 'A.sol'),
-            '// @fsca-id 1\ncontract A is normalTemplate {}');
+            '// @arkheion-id 1\ncontract A is normalTemplate {}');
         writeFile(path.join(tmp, 'contracts', 'undeployed', 'B.sol'),
-            '// @fsca-id 2\ncontract B is normalTemplate {}');
+            '// @arkheion-id 2\ncontract B is normalTemplate {}');
         const { idConflicts } = scanIdConflicts(tmp);
         expect(idConflicts).toHaveLength(0);
     });
 
-    test('two contracts sharing same @fsca-id → conflict', () => {
+    test('two contracts sharing same @arkheion-id → conflict', () => {
         writeFile(path.join(tmp, 'contracts', 'undeployed', 'A.sol'),
-            '// @fsca-id 5\ncontract A is normalTemplate {}');
+            '// @arkheion-id 5\ncontract A is normalTemplate {}');
         writeFile(path.join(tmp, 'contracts', 'undeployed', 'B.sol'),
-            '// @fsca-id 5\ncontract B is normalTemplate {}');
+            '// @arkheion-id 5\ncontract B is normalTemplate {}');
         const { idConflicts } = scanIdConflicts(tmp);
         expect(idConflicts).toHaveLength(1);
         expect(idConflicts[0].contractId).toBe(5);
@@ -190,20 +190,20 @@ describe('scanIdConflicts', () => {
         expect(names).toContain('B');
     });
 
-    test('contract without @fsca-id is ignored', () => {
+    test('contract without @arkheion-id is ignored', () => {
         writeFile(path.join(tmp, 'contracts', 'undeployed', 'A.sol'),
             'contract A is normalTemplate {}');
         writeFile(path.join(tmp, 'contracts', 'undeployed', 'B.sol'),
-            '// @fsca-id 1\ncontract B is normalTemplate {}');
+            '// @arkheion-id 1\ncontract B is normalTemplate {}');
         const { idConflicts } = scanIdConflicts(tmp);
         expect(idConflicts).toHaveLength(0);
     });
 
     test('conflict in subdirectory', () => {
         writeFile(path.join(tmp, 'contracts', 'undeployed', 'A.sol'),
-            '// @fsca-id 3\ncontract A is normalTemplate {}');
+            '// @arkheion-id 3\ncontract A is normalTemplate {}');
         writeFile(path.join(tmp, 'contracts', 'undeployed', 'lib', 'B.sol'),
-            '// @fsca-id 3\ncontract B is normalTemplate {}');
+            '// @arkheion-id 3\ncontract B is normalTemplate {}');
         const { idConflicts } = scanIdConflicts(tmp);
         expect(idConflicts).toHaveLength(1);
         expect(idConflicts[0].contractId).toBe(3);

@@ -4,7 +4,7 @@ const os = require('os');
 const ethers = require('ethers');
 
 function makeTmpDir() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'fsca-deploy-test-'));
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'arkheion-deploy-test-'));
 }
 
 function writeProjectJson(dir, data) {
@@ -19,7 +19,7 @@ function baseProject() {
   return {
     network: { name: 'localnet', rpc: 'http://127.0.0.1:8545' },
     account: { privateKey: '0x' + 'a'.repeat(64) },
-    fsca: {
+    arkheion: {
       clusterAddress: '0x' + '1'.repeat(40),
       alldeployedcontracts: [
         {
@@ -95,9 +95,9 @@ const factoryDeploy = jest.fn();
 
 beforeEach(() => {
   jest.clearAllMocks();
-  jest.spyOn(console, 'log').mockImplementation(() => {});
-  jest.spyOn(console, 'warn').mockImplementation(() => {});
-  jest.spyOn(console, 'error').mockImplementation(() => {});
+  jest.spyOn(console, 'log').mockImplementation(() => { });
+  jest.spyOn(console, 'warn').mockImplementation(() => { });
+  jest.spyOn(console, 'error').mockImplementation(() => { });
   jest.spyOn(process, 'exit').mockImplementation((code) => {
     throw new Error(`process.exit:${code}`);
   });
@@ -151,7 +151,7 @@ describe('deploy command — real deploy.js path', () => {
     await deploy({ rootDir: dir, args: { contract: 'TradeEngine', description: 'TradeEngineV2', cleanup: 'soft', yes: true } });
 
     const updated = readProjectJson(dir);
-    const newRecord = updated.fsca.alldeployedcontracts.find(r => r.address === '0x' + '3'.repeat(40));
+    const newRecord = updated.arkheion.alldeployedcontracts.find(r => r.address === '0x' + '3'.repeat(40));
     const cleanupReport = JSON.parse(fs.readFileSync(path.join(dir, 'cleanup-report.json'), 'utf-8'));
     const deployedDir = path.join(dir, 'contracts', 'deployed');
 
@@ -165,10 +165,10 @@ describe('deploy command — real deploy.js path', () => {
       deployTx: '0xDeployTx',
       podSnapshot: { active: [], passive: [] },
     }));
-    expect(updated.fsca.unmountedcontracts).toEqual([
+    expect(updated.arkheion.unmountedcontracts).toEqual([
       expect.objectContaining({ address: '0x' + '3'.repeat(40), name: 'TradeEngineV2', deploySeq: 3 }),
     ]);
-    expect(updated.fsca.currentOperating).toBe('0x' + '3'.repeat(40));
+    expect(updated.arkheion.currentOperating).toBe('0x' + '3'.repeat(40));
     expect(cleanupReport.mode).toBe('soft');
     expect(fs.existsSync(deployedDir)).toBe(true);
     expect(fs.readdirSync(deployedDir).some(name => name.startsWith('normaltemplate_TradeEngineV2_'))).toBe(true);

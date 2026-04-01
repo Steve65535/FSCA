@@ -4,7 +4,7 @@ const os = require('os');
 const actualEthers = jest.requireActual('ethers');
 
 function makeTmpDir() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'fsca-rollback-test-'));
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'arkheion-rollback-test-'));
 }
 
 function writeProjectJson(dir, data) {
@@ -23,7 +23,7 @@ function baseProject() {
   return {
     network: { name: 'localnet', rpc: 'http://127.0.0.1:8545' },
     account: { privateKey: '0x' + 'a'.repeat(64) },
-    fsca: {
+    arkheion: {
       clusterAddress: '0x' + '1'.repeat(40),
       currentOperating: '0x' + 'c'.repeat(40),
       alldeployedcontracts: [
@@ -94,9 +94,9 @@ jest.mock('ethers', () => {
 beforeEach(() => {
   jest.clearAllMocks();
   mockContractInstances.clear();
-  jest.spyOn(console, 'log').mockImplementation(() => {});
-  jest.spyOn(console, 'warn').mockImplementation(() => {});
-  jest.spyOn(console, 'error').mockImplementation(() => {});
+  jest.spyOn(console, 'log').mockImplementation(() => { });
+  jest.spyOn(console, 'warn').mockImplementation(() => { });
+  jest.spyOn(console, 'error').mockImplementation(() => { });
   jest.spyOn(process, 'exit').mockImplementation((code) => {
     throw new Error(`process.exit:${code}`);
   });
@@ -150,9 +150,9 @@ describe('rollback command — real rollback.js path', () => {
     const config = baseProject();
     writeProjectJson(dir, config);
 
-    const clusterAddr = config.fsca.clusterAddress;
-    const targetAddr = config.fsca.alldeployedcontracts[0].address;
-    const currentAddr = config.fsca.alldeployedcontracts[1].address;
+    const clusterAddr = config.arkheion.clusterAddress;
+    const targetAddr = config.arkheion.alldeployedcontracts[0].address;
+    const currentAddr = config.arkheion.alldeployedcontracts[1].address;
 
     const registry = buildRegistryCallMap([
       [110, '0x' + 'd'.repeat(40), 'AccountStorage'],
@@ -196,8 +196,8 @@ describe('rollback command — real rollback.js path', () => {
     await rollback({ rootDir: dir, args: { id: '210', yes: true } });
 
     const updated = readProjectJson(dir);
-    const current = updated.fsca.alldeployedcontracts.find(r => r.address === currentAddr);
-    const target = updated.fsca.alldeployedcontracts.find(r => r.address === targetAddr);
+    const current = updated.arkheion.alldeployedcontracts.find(r => r.address === currentAddr);
+    const target = updated.arkheion.alldeployedcontracts.find(r => r.address === targetAddr);
     const report = readJson(dir, 'rollback-report.json');
 
     expect(checkpointSteps).toEqual(['B', 'C']);
@@ -205,8 +205,8 @@ describe('rollback command — real rollback.js path', () => {
     expect(current.status).toBe('deprecated');
     expect(current.podSnapshot).toEqual({ active: [{ contractId: 111 }], passive: [{ contractId: 611 }] });
     expect(target.status).toBe('mounted');
-    expect(updated.fsca.currentOperating).toBe(targetAddr);
-    expect(updated.fsca.runningcontracts).toEqual([
+    expect(updated.arkheion.currentOperating).toBe(targetAddr);
+    expect(updated.arkheion.runningcontracts).toEqual([
       expect.objectContaining({ address: targetAddr, contractId: 210, name: 'LendingEngine' }),
     ]);
     expect(report.errors).toEqual([]);
@@ -223,8 +223,8 @@ describe('rollback command — real rollback.js path', () => {
     const config = baseProject();
     writeProjectJson(dir, config);
 
-    const clusterAddr = config.fsca.clusterAddress;
-    const currentAddr = config.fsca.alldeployedcontracts[1].address;
+    const clusterAddr = config.arkheion.clusterAddress;
+    const currentAddr = config.arkheion.alldeployedcontracts[1].address;
     mockContractInstances.set(clusterAddr.toLowerCase(), {
       deleteContract: jest.fn().mockResolvedValue({}),
       registerContract: jest.fn().mockResolvedValue({}),
@@ -257,9 +257,9 @@ describe('rollback command — real rollback.js path', () => {
     const config = baseProject();
     writeProjectJson(dir, config);
 
-    const clusterAddr = config.fsca.clusterAddress;
-    const targetAddr = config.fsca.alldeployedcontracts[0].address;
-    const currentAddr = config.fsca.alldeployedcontracts[1].address;
+    const clusterAddr = config.arkheion.clusterAddress;
+    const targetAddr = config.arkheion.alldeployedcontracts[0].address;
+    const currentAddr = config.arkheion.alldeployedcontracts[1].address;
     const registry = buildRegistryCallMap([
       [110, '0x' + 'd'.repeat(40), 'AccountStorage'],
       [610, '0x' + 'e'.repeat(40), 'MarketRegistry'],
@@ -299,7 +299,7 @@ describe('rollback command — real rollback.js path', () => {
 
     const updated = readProjectJson(dir);
     const report = readJson(dir, 'rollback-report.json');
-    expect(updated.fsca.currentOperating).toBe(targetAddr);
+    expect(updated.arkheion.currentOperating).toBe(targetAddr);
     expect(report.podRestoreResults).toEqual([
       expect.objectContaining({ contractId: 110, type: 'active', status: 'ok' }),
       { contractId: 610, type: 'passive', status: 'failed', error: 'rpc timeout' },

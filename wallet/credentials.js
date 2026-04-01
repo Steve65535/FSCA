@@ -44,12 +44,12 @@ function loadEnvFile(rootDir = process.cwd()) {
 
 function resolveRpcUrl(config, rootDir = process.cwd()) {
   loadEnvFile(rootDir);
-  return process.env.FSCA_RPC_URL || config?.network?.rpc || '';
+  return process.env.Arkheion_RPC_URL || config?.network?.rpc || '';
 }
 
 function resolvePrivateKey(config, rootDir = process.cwd()) {
   loadEnvFile(rootDir);
-  return process.env.FSCA_PRIVATE_KEY || config?.account?.privateKey || '';
+  return process.env.Arkheion_PRIVATE_KEY || config?.account?.privateKey || '';
 }
 
 module.exports = {

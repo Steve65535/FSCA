@@ -1,4 +1,4 @@
-# Manual Deployment Guide: FSCA CBS on Sei Testnet
+# Manual Deployment Guide: Arkheion CBS on Sei Testnet
 
 This guide is for live demo use.
 You type every command manually in terminal.
@@ -7,12 +7,12 @@ You type every command manually in terminal.
 
 Run the full lifecycle in this exact order:
 
-1. `fsca init`
-2. `fsca cluster init`
-3. `fsca deploy`
-4. `fsca cluster link`
-5. `fsca cluster mount`
-6. `fsca cluster upgrade`
+1. `arkheion init`
+2. `arkheion cluster init`
+3. `arkheion deploy`
+4. `arkheion cluster link`
+5. `arkheion cluster mount`
+6. `arkheion cluster upgrade`
 
 And clearly show hot upgrade behavior for `ID=2`.
 
@@ -26,104 +26,104 @@ And clearly show hot upgrade behavior for `ID=2`.
 ## 0) Prepare Workspace
 
 ```bash
-export FSCA_ACCOUNT_ADDRESS=0x9De4a080444b8BE731539D7483869058c1Bd768d
-export FSCA_PRIVATE_KEY='<your_private_key>'
+export Arkheion_ACCOUNT_ADDRESS=0x9De4a080444b8BE731539D7483869058c1Bd768d
+export Arkheion_PRIVATE_KEY='<your_private_key>'
 
-mkdir -p ~/Desktop/fsca-sei-manual
-cd ~/Desktop/fsca-sei-manual
+mkdir -p ~/Desktop/arkheion-sei-manual
+cd ~/Desktop/arkheion-sei-manual
 
 # Copy CBS contracts from repository
-cp -R /Users/steve/Desktop/fsca-cli/demo/contracts ./contracts
+cp -R /Users/steve/Desktop/arkheion-cli/demo/contracts ./contracts
 ```
 
-## 1) Initialize Project (`fsca init`)
+## 1) Initialize Project (`arkheion init`)
 
 ```bash
-fsca init \
+arkheion init \
   --networkName sei-testnet \
   --rpc https://evm-rpc-testnet.sei-apis.com \
   --chainId 1328 \
   --blockConfirmations 1 \
-  --accountPrivateKey "$FSCA_PRIVATE_KEY" \
-  --address "$FSCA_ACCOUNT_ADDRESS"
+  --accountPrivateKey "$Arkheion_PRIVATE_KEY" \
+  --address "$Arkheion_ACCOUNT_ADDRESS"
 ```
 
-## 2) Initialize Cluster (`fsca cluster init`)
+## 2) Initialize Cluster (`arkheion cluster init`)
 
 ```bash
-fsca cluster init --threshold 1
+arkheion cluster init --threshold 1
 ```
 
-## 3) Deploy CBS Contracts (`fsca deploy`)
+## 3) Deploy CBS Contracts (`arkheion deploy`)
 
 ```bash
-fsca deploy --contract AccountStorage --description AccountStorage
-fsca deploy --contract TradeEngineV1 --description TradeEngineV1
-fsca deploy --contract RiskGuardV1 --description RiskGuardV1
+arkheion deploy --contract AccountStorage --description AccountStorage
+arkheion deploy --contract TradeEngineV1 --description TradeEngineV1
+arkheion deploy --contract RiskGuardV1 --description RiskGuardV1
 ```
 
 Resolve addresses from `project.json`:
 
 ```bash
-STORAGE=$(node -e "const c=require('./project.json');console.log(c.fsca.alldeployedcontracts.find(x=>x.name==='AccountStorage').address)")
-TRADE=$(node -e "const c=require('./project.json');console.log(c.fsca.alldeployedcontracts.find(x=>x.name==='TradeEngineV1').address)")
-RISK=$(node -e "const c=require('./project.json');console.log(c.fsca.alldeployedcontracts.find(x=>x.name==='RiskGuardV1').address)")
+STORAGE=$(node -e "const c=require('./project.json');console.log(c.arkheion.alldeployedcontracts.find(x=>x.name==='AccountStorage').address)")
+TRADE=$(node -e "const c=require('./project.json');console.log(c.arkheion.alldeployedcontracts.find(x=>x.name==='TradeEngineV1').address)")
+RISK=$(node -e "const c=require('./project.json');console.log(c.arkheion.alldeployedcontracts.find(x=>x.name==='RiskGuardV1').address)")
 
 echo "AccountStorage: $STORAGE"
 echo "TradeEngineV1:  $TRADE"
 echo "RiskGuardV1:    $RISK"
 ```
 
-## 4) Link Dependencies (`fsca cluster link`)
+## 4) Link Dependencies (`arkheion cluster link`)
 
 Link from TradeEngine to storage + risk guard:
 
 ```bash
-fsca cluster choose "$TRADE"
-fsca cluster link positive "$STORAGE" 1
-fsca cluster link positive "$RISK" 3
+arkheion cluster choose "$TRADE"
+arkheion cluster link positive "$STORAGE" 1
+arkheion cluster link positive "$RISK" 3
 ```
 
-## 5) Mount Contracts (`fsca cluster mount`)
+## 5) Mount Contracts (`arkheion cluster mount`)
 
 ```bash
-fsca cluster choose "$STORAGE"
-fsca cluster mount 1 AccountStorage
+arkheion cluster choose "$STORAGE"
+arkheion cluster mount 1 AccountStorage
 
-fsca cluster choose "$TRADE"
-fsca cluster mount 2 TradeEngineV1
+arkheion cluster choose "$TRADE"
+arkheion cluster mount 2 TradeEngineV1
 
-fsca cluster choose "$RISK"
-fsca cluster mount 3 RiskGuardV1
+arkheion cluster choose "$RISK"
+arkheion cluster mount 3 RiskGuardV1
 ```
 
 Verify mounted list and topology:
 
 ```bash
-fsca cluster list mounted
-fsca cluster graph
+arkheion cluster list mounted
+arkheion cluster graph
 ```
 
-## 6) Hot Upgrade (`fsca cluster upgrade`)
+## 6) Hot Upgrade (`arkheion cluster upgrade`)
 
 Show `ID=2` info before upgrade:
 
 ```bash
-fsca cluster info 2
+arkheion cluster info 2
 ```
 
 Upgrade V1 -> V2:
 
 ```bash
-fsca cluster upgrade --id 2 --contract TradeEngineV2
+arkheion cluster upgrade --id 2 --contract TradeEngineV2
 ```
 
 Show `ID=2` info after upgrade:
 
 ```bash
-fsca cluster info 2
-fsca cluster list mounted
-fsca cluster graph
+arkheion cluster info 2
+arkheion cluster list mounted
+arkheion cluster graph
 ```
 
 ## What to Say in Demo (Hot Upgrade)
@@ -136,5 +136,5 @@ fsca cluster graph
 ## Cleanup
 
 ```bash
-unset FSCA_PRIVATE_KEY FSCA_ACCOUNT_ADDRESS
+unset Arkheion_PRIVATE_KEY Arkheion_ACCOUNT_ADDRESS
 ```

@@ -24,18 +24,18 @@ const getProvider = chainProvider.getProvider;
 function loadProjectConfig(rootDir) {
     const configPath = path.join(rootDir, 'project.json');
     if (!fs.existsSync(configPath)) {
-        throw new Error('project.json not found. Please run "fsca init" first.');
+        throw new Error('project.json not found. Please run "arkheion init" first.');
     }
 
     const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
     const rpcUrl = credentials.resolveRpcUrl(config, rootDir);
 
     if (!rpcUrl) {
-        throw new Error('Network RPC URL not configured (set FSCA_RPC_URL or network.rpc in project.json)');
+        throw new Error('Network RPC URL not configured (set Arkheion_RPC_URL or network.rpc in project.json)');
     }
 
-    if (!config.fsca || !config.fsca.clusterAddress) {
-        throw new Error('ClusterManager address not found in project.json. Please run "fsca cluster init" first.');
+    if (!config.arkheion || !config.arkheion.clusterAddress) {
+        throw new Error('ClusterManager address not found in project.json. Please run "arkheion cluster init" first.');
     }
 
     config.network = config.network || {};
@@ -52,11 +52,11 @@ function updateCurrentOperating(rootDir, address) {
     const configPath = path.join(rootDir, 'project.json');
     const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
 
-    if (!config.fsca) {
-        config.fsca = {};
+    if (!config.arkheion) {
+        config.arkheion = {};
     }
 
-    config.fsca.currentOperating = address;
+    config.arkheion.currentOperating = address;
 
     fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
     console.log(`Updated currentOperating to ${address} in project.json`);
@@ -162,24 +162,24 @@ function findContractMetadata(config, address) {
     const addr = address.toLowerCase();
 
     // 先在 runningcontracts 中查找
-    if (config.fsca?.runningcontracts) {
-        const found = config.fsca.runningcontracts.find(
+    if (config.arkheion?.runningcontracts) {
+        const found = config.arkheion.runningcontracts.find(
             c => c.address.toLowerCase() === addr
         );
         if (found) return { ...found, status: 'MOUNTED' };
     }
 
     // 再在 unmountedcontracts 中查找
-    if (config.fsca?.unmountedcontracts) {
-        const found = config.fsca.unmountedcontracts.find(
+    if (config.arkheion?.unmountedcontracts) {
+        const found = config.arkheion.unmountedcontracts.find(
             c => c.address.toLowerCase() === addr
         );
         if (found) return { ...found, status: 'UNMOUNTED' };
     }
 
     // 最后在 alldeployedcontracts 中查找
-    if (config.fsca?.alldeployedcontracts) {
-        const found = config.fsca.alldeployedcontracts.find(
+    if (config.arkheion?.alldeployedcontracts) {
+        const found = config.arkheion.alldeployedcontracts.find(
             c => c.address.toLowerCase() === addr
         );
         if (found) return { ...found, status: 'UNKNOWN' };
@@ -258,7 +258,7 @@ module.exports = async function choose({ rootDir, args = {} }) {
 
         // 4. Connect to ClusterManager
         const clusterAbi = loadClusterManagerABI(rootDir);
-        const clusterContract = new ethers.Contract(config.fsca.clusterAddress, clusterAbi, provider);
+        const clusterContract = new ethers.Contract(config.arkheion.clusterAddress, clusterAbi, provider);
 
         // 5. Check if in cluster
         console.log(`${logger.COLORS.brightYellow}Querying cluster status...${logger.COLORS.reset}`);
@@ -281,9 +281,9 @@ module.exports = async function choose({ rootDir, args = {} }) {
 
         // 8. Additional tips
         if (!clusterStatus.found) {
-            console.log(`${logger.COLORS.brightYellow}💡 Tip: Contract not found in cluster. Use 'fsca cluster mount' to register it.${logger.COLORS.reset}`);
+            console.log(`${logger.COLORS.brightYellow}💡 Tip: Contract not found in cluster. Use 'arkheion cluster mount' to register it.${logger.COLORS.reset}`);
         } else if (mountStatus == 0) {
-            console.log(`${logger.COLORS.brightYellow}💡 Tip: Contract is not mounted. You can use 'fsca cluster link' to configure links.${logger.COLORS.reset}`);
+            console.log(`${logger.COLORS.brightYellow}💡 Tip: Contract is not mounted. You can use 'arkheion cluster link' to configure links.${logger.COLORS.reset}`);
         } else if (mountStatus == 1) {
             console.log(`${logger.COLORS.brightGreen}✓ Contract is active and ready for operations.${logger.COLORS.reset}`);
         }
@@ -299,7 +299,7 @@ module.exports = async function choose({ rootDir, args = {} }) {
  * 导出辅助函数供其他命令使用
  */
 module.exports.displayCurrentContract = function (config) {
-    const currentAddr = config.fsca?.currentOperating;
+    const currentAddr = config.arkheion?.currentOperating;
     if (!currentAddr) {
         return;
     }

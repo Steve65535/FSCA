@@ -16,7 +16,7 @@ function getLock() {
 }
 
 function makeTmpDir() {
-    return fs.mkdtempSync(path.join(os.tmpdir(), 'fsca-lock-test-'));
+    return fs.mkdtempSync(path.join(os.tmpdir(), 'arkheion-lock-test-'));
 }
 
 describe('clusterLock', () => {
@@ -24,7 +24,7 @@ describe('clusterLock', () => {
         const dir = makeTmpDir();
         const { acquireLock } = getLock();
         const lock = acquireLock(dir, '0xCLUSTER', 'test-cmd');
-        const lockFile = path.join(dir, '.fsca-cluster.lock');
+        const lockFile = path.join(dir, '.arkheion-cluster.lock');
         assert.ok(fs.existsSync(lockFile), 'lock file should exist');
         const data = JSON.parse(fs.readFileSync(lockFile, 'utf-8'));
         assert.strictEqual(data.pid, process.pid);
@@ -49,7 +49,7 @@ describe('clusterLock', () => {
 
     it('clears orphan lock (dead PID) and acquires', () => {
         const dir = makeTmpDir();
-        const lockFile = path.join(dir, '.fsca-cluster.lock');
+        const lockFile = path.join(dir, '.arkheion-cluster.lock');
         // Write a lock with a PID that definitely does not exist
         fs.writeFileSync(lockFile, JSON.stringify({
             pid: 999999999,
@@ -76,7 +76,7 @@ describe('clusterLock', () => {
 
     it('clears malformed lock file and acquires', () => {
         const dir = makeTmpDir();
-        const lockFile = path.join(dir, '.fsca-cluster.lock');
+        const lockFile = path.join(dir, '.arkheion-cluster.lock');
         fs.writeFileSync(lockFile, 'not-valid-json', 'utf-8');
 
         const { acquireLock } = getLock();

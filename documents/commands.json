@@ -1,118 +1,75 @@
 {
-    "root":"fsca",
-        "commands":{
-            "init":"initialize the project and detect the environment automatically config npm and hardhat",
-            "config":{
-                "chain select":{
-                    "public network":{
-                        
-                        "eth-mainnet": "eth mainnet",
-                        "goerli": "ethereum goerli testnet",
-                        "sepolia": "ethereum sepolia testnet",
-
-                        
-                        "bsc-mainnet": "binance smart chain mainnet",
-                        "bsc-testnet": "binance smart chain testnet",
-
-                        
-                        "polygon-mainnet": "polygon mainnet",
-                        "mumbai": "polygon mumbai testnet",
-
-                        
-                        "avalanche-mainnet": "avalanche c-chain mainnet",
-                        "fuji": "avalanche fuji testnet",
-
-                        
-                        "fantom-mainnet": "fantom opera mainnet",
-                        "fantom-testnet": "fantom testnet",
-
-                        
-                        "arbitrum-one": "arbitrum one mainnet",
-                        "arbitrum-goerli": "arbitrum goerli testnet",
-
-                        
-                        "optimism-mainnet": "optimism mainnet",
-                        "optimism-goerli": "optimism goerli testnet",
-
-                        
-                        "zksync-mainnet": "zkSync mainnet",
-                        "zksync-testnet": "zkSync testnet",
-
-                        
-                        "base-mainnet": "base mainnet",
-                        "base-goerli": "base goerli testnet",
-
-                        
-                        "scroll-mainnet": "scroll mainnet",
-                        "scroll-testnet": "scroll testnet",
-
-                        
-                        "linea-mainnet": "linea mainnet",
-                        "linea-goerli": "linea goerli testnet",
-
-                        
-                        "polygon-zkevm": "polygon zkEVM mainnet",
-                        "polygon-zkevm-testnet": "polygon zkEVM testnet",
-
-                        
-                        "mantle-mainnet": "mantle mainnet",
-                        "mantle-testnet": "mantle testnet",
-
-                        
-                        "celo-mainnet": "celo mainnet",
-                        "alfajores": "celo alfajores testnet",
-                        "baklava": "celo baklava testnet",
-
-                        
-                        "moonbeam-mainnet": "moonbeam mainnet",
-                        "moonbase-alpha": "moonbeam testnet",
-                        "moonriver": "moonriver mainnet",
-                        "moonriver-testnet": "moonriver testnet",
-
-                        
-                        "aurora-mainnet": "aurora mainnet",
-                        "aurora-testnet": "aurora testnet",
-
-                        
-                        "tomochain-mainnet": "tomochain mainnet",
-                        "tomochain-testnet": "tomochain testnet",
-
-                        
-                        "okx-mainnet": "okx chain mainnet",
-                        "okx-testnet": "okx chain testnet",
-
-                        
-                        "arbitrum-nova": "arbitrum nova mainnet",
-                        "arbitrum-nova-testnet": "arbitrum nova testnet",
-
-                        
-                        "sei-evm-mainnet": "sei-evm mainnet",
-                        "sei-evm-testnet": "sei-evm-testnet"
-                    
-                    },
-                    "private-net":"private network"
-                    
+    "root": "arkheion",
+    "commands": {
+        "init": "initialize the project and detect the environment automatically config npm and hardhat",
+        "config": {
+            "chain select": {
+                "public network": {
+                    "eth-mainnet": "eth mainnet",
+                    "goerli": "ethereum goerli testnet",
+                    "sepolia": "ethereum sepolia testnet",
+                    "bsc-mainnet": "binance smart chain mainnet",
+                    "bsc-testnet": "binance smart chain testnet",
+                    "polygon-mainnet": "polygon mainnet",
+                    "mumbai": "polygon mumbai testnet",
+                    "avalanche-mainnet": "avalanche c-chain mainnet",
+                    "fuji": "avalanche fuji testnet",
+                    "fantom-mainnet": "fantom opera mainnet",
+                    "fantom-testnet": "fantom testnet",
+                    "arbitrum-one": "arbitrum one mainnet",
+                    "arbitrum-goerli": "arbitrum goerli testnet",
+                    "optimism-mainnet": "optimism mainnet",
+                    "optimism-goerli": "optimism goerli testnet",
+                    "zksync-mainnet": "zkSync mainnet",
+                    "zksync-testnet": "zkSync testnet",
+                    "base-mainnet": "base mainnet",
+                    "base-goerli": "base goerli testnet",
+                    "scroll-mainnet": "scroll mainnet",
+                    "scroll-testnet": "scroll testnet",
+                    "linea-mainnet": "linea mainnet",
+                    "linea-goerli": "linea goerli testnet",
+                    "polygon-zkevm": "polygon zkEVM mainnet",
+                    "polygon-zkevm-testnet": "polygon zkEVM testnet",
+                    "mantle-mainnet": "mantle mainnet",
+                    "mantle-testnet": "mantle testnet",
+                    "celo-mainnet": "celo mainnet",
+                    "alfajores": "celo alfajores testnet",
+                    "baklava": "celo baklava testnet",
+                    "moonbeam-mainnet": "moonbeam mainnet",
+                    "moonbase-alpha": "moonbeam testnet",
+                    "moonriver": "moonriver mainnet",
+                    "moonriver-testnet": "moonriver testnet",
+                    "aurora-mainnet": "aurora mainnet",
+                    "aurora-testnet": "aurora testnet",
+                    "tomochain-mainnet": "tomochain mainnet",
+                    "tomochain-testnet": "tomochain testnet",
+                    "okx-mainnet": "okx chain mainnet",
+                    "okx-testnet": "okx chain testnet",
+                    "arbitrum-nova": "arbitrum nova mainnet",
+                    "arbitrum-nova-testnet": "arbitrum nova testnet",
+                    "sei-evm-mainnet": "sei-evm mainnet",
+                    "sei-evm-testnet": "sei-evm-testnet"
                 },
-                "operatoraddress":"operatoraddress",
-                "private-key":"private-ket",
-                "key_expire_time":{
-                    "1h":"1 hour",
-                    "1d":"1 day"
-                },
-                "rpcUrl": "http://127.0.0.1:8545",
-                "chainId": 1337,
-                "networkType": "private",
-                "gasPrice": "auto",
-                "gasLimit": 21000,
-                "confirmations": 1,
-                "signerType": "local",
-                "timeout": 30000,
-                "retry": 2
-                
+                "private-net": "private network"
             },
-            "cluster":{
-                "init":"deploy the multisigwallet and clustermanager evokermanager rightmanager"
-            }
-
+            "operatoraddress": "operatoraddress",
+            "private-key": "private-ket",
+            "key_expire_time": {
+                "1h": "1 hour",
+                "1d": "1 day"
+            },
+            "rpcUrl": "http://127.0.0.1:8545",
+            "chainId": 1337,
+            "networkType": "private",
+            "gasPrice": "auto",
+            "gasLimit": 21000,
+            "confirmations": 1,
+            "signerType": "local",
+            "timeout": 30000,
+            "retry": 2
+        },
+        "cluster": {
+            "init": "deploy the multisigwallet and clustermanager evokermanager rightmanager"
         }
+    }
 }

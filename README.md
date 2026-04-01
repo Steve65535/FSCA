@@ -1,9 +1,9 @@
 <p align="center">
-  <img src="assets/logo_banner.png" alt="FSCA — Smart Contract Cluster Orchestrator" width="480" />
+  <img src="assets/logo_banner.png" alt="Arkheion — Smart Contract Cluster Orchestrator" width="480" />
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/fsca-cli"><img src="https://img.shields.io/npm/v/fsca-cli?style=flat-square&color=4F46E5" alt="npm version" /></a>
+  <a href="https://www.npmjs.com/package/arkheion-cli"><img src="https://img.shields.io/npm/v/arkheion-cli?style=flat-square&color=4F46E5" alt="npm version" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-06B6D4?style=flat-square" alt="License" /></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%3E%3D16-brightgreen?style=flat-square" alt="Node" /></a>
   <a href="#"><img src="https://img.shields.io/badge/solidity-%5E0.8-363636?style=flat-square&logo=solidity" alt="Solidity" /></a>
@@ -20,14 +20,14 @@
 
 ---
 
-# FSCA — Full Stack Contract Architecture
+# Arkheion — Full Stack Contract Architecture
 
 > Microservice architecture for smart contracts.
 
-FSCA is a developer framework for building **modular, upgradeable, and system-level smart contracts**.
+Arkheion is a developer framework for building **modular, upgradeable, and system-level smart contracts**.
 
 Instead of treating a protocol as a single contract with upgrade patterns (e.g. proxy),
-FSCA treats it as a **composable service system**:
+Arkheion treats it as a **composable service system**:
 
 - Each module is an isolated contract service
 - State and logic are separated for safer upgrades
@@ -36,7 +36,7 @@ FSCA treats it as a **composable service system**:
 
 ---
 
-## Why FSCA?
+## Why Arkheion?
 
 As smart contracts evolve beyond simple applications,
 **system complexity becomes the real bottleneck**:
@@ -45,7 +45,7 @@ As smart contracts evolve beyond simple applications,
 - Modular patterns still share state and create coupling
 - Complex protocols lack a clear system architecture
 
-FSCA introduces a new paradigm:
+Arkheion introduces a new paradigm:
 
 > **From single-contract upgrade → to system-level architecture**
 
@@ -54,34 +54,34 @@ FSCA introduces a new paradigm:
 ## 1-Min Demo
 
 ```bash
-fsca init
-fsca cluster init
+arkheion init
+arkheion cluster init
 
 # Annotate your contracts, then one command does everything:
-fsca cluster auto
+arkheion cluster auto
 ```
 
 Add annotations to your contracts:
 
 ```solidity
-// @fsca-id 1
-// @fsca-active
-// @fsca-passive
-// @fsca-auto yes
+// @arkheion-id 1
+// @arkheion-active
+// @arkheion-passive
+// @arkheion-auto yes
 contract AccountStorage is normalTemplate { ... }
 
-// @fsca-id 2
-// @fsca-active 1,3
-// @fsca-passive
-// @fsca-auto yes
+// @arkheion-id 2
+// @arkheion-active 1,3
+// @arkheion-passive
+// @arkheion-auto yes
 contract TradeEngine is normalTemplate { ... }
 ```
 
 Then run:
 
 ```bash
-fsca cluster auto check   # static analysis: ID conflicts, pod cycles, function call cycles
-fsca cluster auto         # deploy all → link all → mount all, automatically
+arkheion cluster auto check   # static analysis: ID conflicts, pod cycles, function call cycles
+arkheion cluster auto         # deploy all → link all → mount all, automatically
 ```
 
 ---
@@ -90,23 +90,23 @@ fsca cluster auto         # deploy all → link all → mount all, automatically
 
 Modern DApps (DeFi, GameFi, NFT marketplaces) consist of **thousands of lines of tightly coupled Solidity** crammed into a single contract or hidden behind fragile proxy patterns. Upgrading one function means redeploying the entire monolith. A single bug can drain the treasury. There is no service discovery, no dependency graph, no governance layer — just raw addresses hardcoded everywhere.
 
-**FSCA fixes this.**
+**Arkheion fixes this.**
 
-## What is FSCA?
+## What is Arkheion?
 
-FSCA (**Full Stack Contract Architecture**) brings the mental model of **Kubernetes** to smart contract development:
+Arkheion (**Full Stack Contract Architecture**) brings the mental model of **Kubernetes** to smart contract development:
 
-| Kubernetes | FSCA |
+| Kubernetes | Arkheion |
 |------------|------|
 | Cluster | `ClusterManager` — registry & router for all services |
 | Pod | `NormalTemplate` — isolated, single-responsibility contract unit |
 | Service Mesh | `EvokerManager` — runtime dependency graph & auth firewall |
 | RBAC | `ProxyWallet` — multi-sig threshold governance |
-| kubectl | `fsca-cli` — one command to deploy, mount, link, upgrade |
+| kubectl | `arkheion-cli` — one command to deploy, mount, link, upgrade |
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│                  fsca-cli (Terminal)                 │ ← Developer interface
+│                  arkheion-cli (Terminal)                 │ ← Developer interface
 ├─────────────────────────────────────────────────────┤
 │  ClusterManager · EvokerManager · ProxyWallet       │ ← Orchestration layer
 ├─────────────────────────────────────────────────────┤
@@ -122,35 +122,35 @@ Every Pod inherits from **NormalTemplate**, which injects security hooks, mount/
 
 ```bash
 # Install
-npm install -g fsca-cli
+npm install -g arkheion-cli
 
 # Scaffold a new project
-fsca init
+arkheion init
 
 # Deploy the orchestration backbone (ClusterManager + EvokerManager + ProxyWallet)
-fsca cluster init
+arkheion cluster init
 
 # Deploy two business contracts
-fsca deploy --contract LendingPool
-fsca deploy --contract PriceOracle
+arkheion deploy --contract LendingPool
+arkheion deploy --contract PriceOracle
 
 # Mount them into the cluster
-fsca cluster mount 1 "LendingPool"
-fsca cluster mount 2 "PriceOracle"
+arkheion cluster mount 1 "LendingPool"
+arkheion cluster mount 2 "PriceOracle"
 
 # Wire dependencies (LendingPool → PriceOracle)
-fsca cluster link active 0xOracleAddr... 2
+arkheion cluster link active 0xOracleAddr... 2
 
 # Visualize the topology
-fsca cluster graph
+arkheion cluster graph
 ```
 
 Or use **declarative auto-assembly** (recommended for multi-contract systems):
 
 ```bash
-# Add @fsca-* annotations to each contract, then:
-fsca cluster auto check   # validate before deploying
-fsca cluster auto         # deploy + link + mount in one command
+# Add @arkheion-* annotations to each contract, then:
+arkheion cluster auto check   # validate before deploying
+arkheion cluster auto         # deploy + link + mount in one command
 ```
 
 ---
@@ -162,7 +162,7 @@ fsca cluster auto         # deploy + link + mount in one command
 # Before (monolith)
 contract GodContract { /* 5,000+ LOC, impossible to audit */ }
 
-# After (FSCA)
+# After (Arkheion)
 LendingPool  ──┐
 PriceOracle  ──┼── Cluster (governed, linked, upgradable)
 Liquidation  ──┘
@@ -173,20 +173,20 @@ Liquidation  ──┘
 
 ### Declarative Auto-Assembly
 
-Annotate contracts with `@fsca-*` tags and let the CLI handle the rest:
+Annotate contracts with `@arkheion-*` tags and let the CLI handle the rest:
 
 ```solidity
-// @fsca-id 2
-// @fsca-active 1,3
-// @fsca-passive
-// @fsca-auto yes
+// @arkheion-id 2
+// @arkheion-active 1,3
+// @arkheion-passive
+// @arkheion-auto yes
 contract TradeEngine is normalTemplate { ... }
 ```
 
 ```bash
-fsca cluster auto check   # ID conflict detection, pod cycle analysis, function call cycle detection
-fsca cluster auto         # full pipeline: deploy all → link all → mount all
-fsca cluster auto --dry-run  # preview plan without executing
+arkheion cluster auto check   # ID conflict detection, pod cycle analysis, function call cycle detection
+arkheion cluster auto         # full pipeline: deploy all → link all → mount all
+arkheion cluster auto --dry-run  # preview plan without executing
 ```
 
 - ✅ Automatic topological sort — deploys in dependency order
@@ -196,16 +196,16 @@ fsca cluster auto --dry-run  # preview plan without executing
 
 ### Runtime Dependency Linking
 ```bash
-fsca cluster link active 0xOracle... 2    # LendingPool calls Oracle
-fsca cluster link passive 0xOracle... 2   # Oracle accepts calls from LendingPool
+arkheion cluster link active 0xOracle... 2    # LendingPool calls Oracle
+arkheion cluster link passive 0xOracle... 2   # Oracle accepts calls from LendingPool
 ```
 - ✅ No hardcoded addresses — ever
 - ✅ Bidirectional auth verification at call time
-- ✅ Topology visualization via `fsca cluster graph`
+- ✅ Topology visualization via `arkheion cluster graph`
 
 ### Zero-Downtime Hot Swap
 ```bash
-fsca cluster upgrade --id 2 --contract PriceOracleV2
+arkheion cluster upgrade --id 2 --contract PriceOracleV2
 # Old oracle is unmounted, new one takes its place — zero disruption to dependents
 ```
 - ✅ Dependents resolve the latest address dynamically
@@ -214,9 +214,9 @@ fsca cluster upgrade --id 2 --contract PriceOracleV2
 
 ### Multi-Sig Governance
 ```bash
-fsca wallet submit --to 0xCluster... --data 0x... --yes
-fsca wallet confirm 0 --yes
-fsca wallet execute 0 --yes
+arkheion wallet submit --to 0xCluster... --data 0x... --yes
+arkheion wallet confirm 0 --yes
+arkheion wallet execute 0 --yes
 ```
 - ✅ Every topology mutation requires threshold signatures
 - ✅ All invasive wallet commands prompt for confirmation — use `--yes` in CI
@@ -232,7 +232,7 @@ fsca wallet execute 0 --yes
 
 | Layer | Component | Role |
 |-------|-----------|------|
-| **CLI** | `fsca-cli` | Developer-facing automation terminal |
+| **CLI** | `arkheion-cli` | Developer-facing automation terminal |
 | **Orchestration** | `ClusterManager` | Service registry, mount table, operator RBAC |
 | | `EvokerManager` | Dependency graph, active/passive link auth |
 | | `ProxyWallet` | Multi-sig threshold gate for all mutations |
@@ -259,41 +259,41 @@ No address spoofing. No unauthorized access. No exceptions.
 
 | Command | Description |
 |---------|-------------|
-| `fsca init` | Scaffold project + Hardhat + config |
-| `fsca deploy --contract <Name> [--cleanup <keep\|soft\|hard>] [--yes]` | Compile & deploy a NormalTemplate contract |
-| `fsca cluster init [--cleanup <keep\|soft\|hard>] [--yes]` | Deploy the orchestration backbone |
-| `fsca cluster mount <id> <name>` | Register a contract into the cluster |
-| `fsca cluster unmount <id>` | Deregister a contract |
-| `fsca cluster upgrade --id <id> --contract <Name> [--cleanup <keep\|soft\|hard>] [--yes]` | Hot-swap a contract version |
-| `fsca cluster link <type> <addr> <id>` | Create active/passive dependency |
-| `fsca cluster unlink <type> <addr> <id>` | Remove a dependency |
-| `fsca cluster auto check` | Static analysis: ID conflicts, pod cycles, function call cycles |
-| `fsca cluster auto [--dry-run] [--cleanup <keep\|soft\|hard>] [--yes]` | Declarative auto-assembly: deploy + link + mount |
-| `fsca cluster rollback --id <contractId> [--generation <n>] [--dry-run] [--yes]` | Roll back to a deprecated historical version |
-| `fsca cluster history --id <contractId>` | Inspect version history for one contract ID |
-| `fsca cluster graph` | Generate Mermaid topology diagram |
-| `fsca cluster list mounted` | List all mounted contracts |
-| `fsca cluster info <id>` | Inspect a contract's metadata |
-| `fsca cluster choose <addr>` | Set working context |
-| `fsca cluster operator add/remove <addr>` | Manage cluster operators |
-| `fsca wallet submit --to <addr> --data <hex> [--yes]` | Submit a transaction (confirmation required) |
-| `fsca wallet confirm <txIndex> [--yes]` | Confirm a transaction (confirmation required) |
-| `fsca wallet execute <txIndex> [--yes]` | Execute a transaction (confirmation required) |
-| `fsca wallet revoke <txIndex> [--yes]` | Revoke a confirmation (confirmation required) |
-| `fsca wallet list [--pending]` | List transactions with **live valid-confirmation counts** |
-| `fsca wallet info <txIndex>` | View transaction details with live confirmation count |
-| `fsca wallet owners` | View signers & threshold |
-| `fsca wallet propose add-owner <addr> [--yes]` | Propose adding an owner (confirmation required) |
-| `fsca wallet propose remove-owner <addr> [--yes]` | Propose removing an owner (confirmation required) |
-| `fsca wallet propose change-threshold <N> [--yes]` | Propose threshold change (confirmation required) |
-| `fsca normal right set/remove` | ABI-level permission control |
-| `fsca normal get modules <type>` | Query linked modules |
+| `arkheion init` | Scaffold project + Hardhat + config |
+| `arkheion deploy --contract <Name> [--cleanup <keep\|soft\|hard>] [--yes]` | Compile & deploy a NormalTemplate contract |
+| `arkheion cluster init [--cleanup <keep\|soft\|hard>] [--yes]` | Deploy the orchestration backbone |
+| `arkheion cluster mount <id> <name>` | Register a contract into the cluster |
+| `arkheion cluster unmount <id>` | Deregister a contract |
+| `arkheion cluster upgrade --id <id> --contract <Name> [--cleanup <keep\|soft\|hard>] [--yes]` | Hot-swap a contract version |
+| `arkheion cluster link <type> <addr> <id>` | Create active/passive dependency |
+| `arkheion cluster unlink <type> <addr> <id>` | Remove a dependency |
+| `arkheion cluster auto check` | Static analysis: ID conflicts, pod cycles, function call cycles |
+| `arkheion cluster auto [--dry-run] [--cleanup <keep\|soft\|hard>] [--yes]` | Declarative auto-assembly: deploy + link + mount |
+| `arkheion cluster rollback --id <contractId> [--generation <n>] [--dry-run] [--yes]` | Roll back to a deprecated historical version |
+| `arkheion cluster history --id <contractId>` | Inspect version history for one contract ID |
+| `arkheion cluster graph` | Generate Mermaid topology diagram |
+| `arkheion cluster list mounted` | List all mounted contracts |
+| `arkheion cluster info <id>` | Inspect a contract's metadata |
+| `arkheion cluster choose <addr>` | Set working context |
+| `arkheion cluster operator add/remove <addr>` | Manage cluster operators |
+| `arkheion wallet submit --to <addr> --data <hex> [--yes]` | Submit a transaction (confirmation required) |
+| `arkheion wallet confirm <txIndex> [--yes]` | Confirm a transaction (confirmation required) |
+| `arkheion wallet execute <txIndex> [--yes]` | Execute a transaction (confirmation required) |
+| `arkheion wallet revoke <txIndex> [--yes]` | Revoke a confirmation (confirmation required) |
+| `arkheion wallet list [--pending]` | List transactions with **live valid-confirmation counts** |
+| `arkheion wallet info <txIndex>` | View transaction details with live confirmation count |
+| `arkheion wallet owners` | View signers & threshold |
+| `arkheion wallet propose add-owner <addr> [--yes]` | Propose adding an owner (confirmation required) |
+| `arkheion wallet propose remove-owner <addr> [--yes]` | Propose removing an owner (confirmation required) |
+| `arkheion wallet propose change-threshold <N> [--yes]` | Propose threshold change (confirmation required) |
+| `arkheion normal right set/remove` | ABI-level permission control |
+| `arkheion normal get modules <type>` | Query linked modules |
 
 ---
 
 ## Comparison
 
-| Feature | Hardhat (vanilla) | OpenZeppelin Upgrades | Diamond (EIP-2535) | **FSCA** |
+| Feature | Hardhat (vanilla) | OpenZeppelin Upgrades | Diamond (EIP-2535) | **Arkheion** |
 |---------|-------------------|-----------------------|---------------------|----------|
 | Modular contracts | ❌ | ❌ | ✅ (facets) | ✅ (pods) |
 | Runtime linking | ❌ | ❌ | ❌ | ✅ |
@@ -328,7 +328,7 @@ Total Lines of Code:   8,500+
 - [x] Multi-sig governance
 - [x] Hot-swap upgrade command
 - [x] Topology graph generation
-- [x] Declarative auto-assembly (`fsca cluster auto`)
+- [x] Declarative auto-assembly (`arkheion cluster auto`)
 - [x] Pod-level & function-level cycle detection
 - [x] Unit tests (115 passing, Jest)
 - [ ] 80%+ test coverage
@@ -345,8 +345,8 @@ Total Lines of Code:   8,500+
 We welcome contributions! Please read our [Contributing Guide](CONTRIBUTING.md) before submitting a PR.
 
 ```bash
-git clone https://github.com/Steve65535/fsca-cli.git
-cd fsca-cli
+git clone https://github.com/Steve65535/arkheion-cli.git
+cd arkheion-cli
 npm install
 npm test
 ```
@@ -363,11 +363,11 @@ npm test
 
 - 📖 **User Guide**: [English](user-guide.md) · [中文](user-guide.zh-CN.md)
 - 🗺️ **Roadmap**: [documents/roadmap.txt](documents/roadmap.txt)
-- 🐛 **Issues**: [GitHub Issues](https://github.com/Steve65535/fsca-cli/issues)
+- 🐛 **Issues**: [GitHub Issues](https://github.com/Steve65535/arkheion-cli/issues)
 - 💬 **Contact**: [@Steve65535](https://github.com/Steve65535)
 
 ---
 
 <p align="center">
-  <sub>FSCA — Build smart contracts like microservices.</sub>
+  <sub>Arkheion — Build smart contracts like microservices.</sub>
 </p>

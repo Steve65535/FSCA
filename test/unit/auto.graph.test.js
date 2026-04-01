@@ -5,8 +5,8 @@
 const { buildGraph, detectCycles, topoSort } = require('../../libs/commands/cluster/auto/graph');
 
 // Helper to make contract descriptors
-function c(fscaId, activePods = [], passivePods = []) {
-    return { fscaId, contractName: `Contract${fscaId}`, activePods, passivePods };
+function c(arkheionId, activePods = [], passivePods = []) {
+    return { arkheionId, contractName: `Contract${arkheionId}`, activePods, passivePods };
 }
 
 describe('graph - buildGraph', () => {

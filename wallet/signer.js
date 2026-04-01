@@ -9,10 +9,10 @@ const credentials = require("./credentials");
  */
 function getSigner(privateKey, provider) {
   credentials.loadEnvFile(process.cwd());
-  const resolvedPrivateKey = process.env.FSCA_PRIVATE_KEY || privateKey;
+  const resolvedPrivateKey = process.env.Arkheion_PRIVATE_KEY || privateKey;
 
   if (!resolvedPrivateKey) {
-    throw new Error("Private key is required (set FSCA_PRIVATE_KEY or account.privateKey)");
+    throw new Error("Private key is required (set Arkheion_PRIVATE_KEY or account.privateKey)");
   }
   return new NonceManager(new Wallet(resolvedPrivateKey, provider));
 }

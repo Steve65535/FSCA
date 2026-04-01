@@ -10,7 +10,7 @@ const path = require('path');
 const os = require('os');
 
 function makeTmpDir() {
-    return fs.mkdtempSync(path.join(os.tmpdir(), 'fsca-mount-test-'));
+    return fs.mkdtempSync(path.join(os.tmpdir(), 'arkheion-mount-test-'));
 }
 
 function writeProjectJson(dir, data) {
@@ -25,7 +25,7 @@ function baseProject(contracts = []) {
     return {
         network: { name: 'localnet', rpc: 'http://127.0.0.1:8545', chainId: 31337, blockConfirmations: 1 },
         account: { privateKey: '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80', address: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' },
-        fsca: {
+        arkheion: {
             clusterAddress: '0xCluster',
             multisigAddress: '0xMultisig',
             evokerManagerAddress: '0xEvoker',
@@ -46,7 +46,7 @@ jest.mock('../../libs/commands/txExecutor', () => ({
 }));
 
 jest.mock('../../libs/commands/clusterLock', () => ({
-    acquireLock: () => ({ release: () => {} }),
+    acquireLock: () => ({ release: () => { } }),
 }));
 
 jest.mock('../../chain/provider', () => ({
@@ -69,7 +69,7 @@ jest.mock('ethers', () => {
                 const key = addr.toLowerCase();
                 if (mockContractInstances.has(key)) return mockContractInstances.get(key);
                 return {
-                    registerContract: async () => {},
+                    registerContract: async () => { },
                     getAllActiveModules: async () => [],
                     getAllPassiveModules: async () => [],
                 };
@@ -80,7 +80,7 @@ jest.mock('ethers', () => {
             const key = addr.toLowerCase();
             if (mockContractInstances.has(key)) return mockContractInstances.get(key);
             return {
-                registerContract: async () => {},
+                registerContract: async () => { },
                 getAllActiveModules: async () => [],
                 getAllPassiveModules: async () => [],
             };
@@ -93,9 +93,9 @@ jest.mock('ethers', () => {
 beforeEach(() => {
     mockContractInstances.clear();
     jest.clearAllMocks();
-    jest.spyOn(console, 'log').mockImplementation(() => {});
-    jest.spyOn(console, 'warn').mockImplementation(() => {});
-    jest.spyOn(console, 'error').mockImplementation(() => {});
+    jest.spyOn(console, 'log').mockImplementation(() => { });
+    jest.spyOn(console, 'warn').mockImplementation(() => { });
+    jest.spyOn(console, 'error').mockImplementation(() => { });
 });
 
 afterEach(() => {
@@ -125,8 +125,8 @@ describe('mount podSnapshot sync — real mount.js code path', () => {
         const config = baseProject([
             { name: 'LegacyEngine', address: contractAddr, contractId: 210, generation: 1, deploySeq: 1, status: 'deprecated', timeStamp: 1000, deployTx: null, podSnapshot: { active: [], passive: [] } },
         ]);
-        config.fsca.currentOperating = contractAddr;
-        config.fsca.unmountedcontracts = [{ name: 'LegacyEngine', address: contractAddr, contractId: null }];
+        config.arkheion.currentOperating = contractAddr;
+        config.arkheion.unmountedcontracts = [{ name: 'LegacyEngine', address: contractAddr, contractId: null }];
         writeProjectJson(dir, config);
 
         const exitSpy = jest.spyOn(process, 'exit').mockImplementation((code) => { throw new Error(`process.exit:${code}`); });
@@ -143,8 +143,8 @@ describe('mount podSnapshot sync — real mount.js code path', () => {
         const config = baseProject([
             { name: 'ArchivedEngine', address: contractAddr, contractId: 210, generation: 1, deploySeq: 1, status: 'archived', timeStamp: 1000, deployTx: null, podSnapshot: { active: [], passive: [] } },
         ]);
-        config.fsca.currentOperating = contractAddr;
-        config.fsca.unmountedcontracts = [{ name: 'ArchivedEngine', address: contractAddr, contractId: null }];
+        config.arkheion.currentOperating = contractAddr;
+        config.arkheion.unmountedcontracts = [{ name: 'ArchivedEngine', address: contractAddr, contractId: null }];
         writeProjectJson(dir, config);
 
         const exitSpy = jest.spyOn(process, 'exit').mockImplementation((code) => { throw new Error(`process.exit:${code}`); });
@@ -163,7 +163,7 @@ describe('mount podSnapshot sync — real mount.js code path', () => {
         ]));
 
         mockContractInstances.set(contractAddr.toLowerCase(), {
-            registerContract: async () => {},
+            registerContract: async () => { },
             getAllActiveModules: async () => [
                 { contractId: 110n, moduleAddress: '0xAccStorage' },
                 { contractId: 111n, moduleAddress: '0xPosStorage' },
@@ -177,7 +177,7 @@ describe('mount podSnapshot sync — real mount.js code path', () => {
         await mount({ rootDir: dir, args: { id: '210', name: 'LendingEngine' } });
 
         const result = readProjectJson(dir);
-        const record = result.fsca.alldeployedcontracts.find(r => r.address === contractAddr);
+        const record = result.arkheion.alldeployedcontracts.find(r => r.address === contractAddr);
 
         expect(record.podSnapshot.active).toEqual([{ contractId: 110 }, { contractId: 111 }]);
         expect(record.podSnapshot.passive).toEqual([{ contractId: 610 }]);
@@ -193,7 +193,7 @@ describe('mount podSnapshot sync — real mount.js code path', () => {
         ]));
 
         mockContractInstances.set(contractAddr.toLowerCase(), {
-            registerContract: async () => {},
+            registerContract: async () => { },
             getAllActiveModules: async () => { throw new Error('RPC timeout'); },
             getAllPassiveModules: async () => [],
         });
@@ -214,7 +214,7 @@ describe('mount podSnapshot sync — real mount.js code path', () => {
         ]));
 
         mockContractInstances.set(contractAddr.toLowerCase(), {
-            registerContract: async () => {},
+            registerContract: async () => { },
             getAllActiveModules: async () => [],
             getAllPassiveModules: async () => [],
         });
@@ -223,7 +223,7 @@ describe('mount podSnapshot sync — real mount.js code path', () => {
         await mount({ rootDir: dir, args: { id: '600', name: 'TokenRegistry' } });
 
         const result = readProjectJson(dir);
-        const record = result.fsca.alldeployedcontracts.find(r => r.address === contractAddr);
+        const record = result.arkheion.alldeployedcontracts.find(r => r.address === contractAddr);
         expect(record.podSnapshot.active).toEqual([]);
         expect(record.podSnapshot.passive).toEqual([]);
     });

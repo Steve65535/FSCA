@@ -12,7 +12,7 @@ const path = require('path');
 const os = require('os');
 
 function makeTmpDir() {
-    return fs.mkdtempSync(path.join(os.tmpdir(), 'fsca-upgrade-test-'));
+    return fs.mkdtempSync(path.join(os.tmpdir(), 'arkheion-upgrade-test-'));
 }
 
 function writeProjectJson(dir, data) {
@@ -27,7 +27,7 @@ function baseProject(contracts = [], running = []) {
     return {
         network: { name: 'localnet', rpc: 'http://127.0.0.1:8545', chainId: 31337, blockConfirmations: 1 },
         account: { privateKey: '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80', address: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' },
-        fsca: {
+        arkheion: {
             clusterAddress: '0xCluster',
             multisigAddress: '0xMultisig',
             evokerManagerAddress: '0xEvoker',
@@ -50,7 +50,7 @@ jest.mock('../../libs/commands/txExecutor', () => ({
 }));
 
 jest.mock('../../libs/commands/clusterLock', () => ({
-    acquireLock: () => ({ release: () => {} }),
+    acquireLock: () => ({ release: () => { } }),
 }));
 
 jest.mock('../../libs/commands/confirm', () => ({
@@ -68,8 +68,8 @@ jest.mock('../../libs/commands/contractConflicts', () => ({
     scanContractConflicts: () => ({ hits: [], conflict: false }),
     scanAllConflicts: () => ({ nameConflicts: [], artifactConflicts: [] }),
     scanIdConflicts: () => ({ idConflicts: [] }),
-    failOnConflict: () => {},
-    failOnAllConflicts: () => {},
+    failOnConflict: () => { },
+    failOnAllConflicts: () => { },
 }));
 
 jest.mock('../../libs/commands/cluster/auto/analyze', () => jest.fn(() => ({
@@ -106,10 +106,10 @@ jest.mock('ethers', () => {
                 if (mockContractInstances.has(key)) return mockContractInstances.get(key);
                 return {
                     getById: async () => ({ contractId: 1, name: 'LendingEngine', contractAddr: '0xOldContract' }),
-                    deleteContract: async () => {},
-                    registerContract: async () => {},
-                    addActivePodBeforeMount: async () => {},
-                    addPassivePodBeforeMount: async () => {},
+                    deleteContract: async () => { },
+                    registerContract: async () => { },
+                    addActivePodBeforeMount: async () => { },
+                    addPassivePodBeforeMount: async () => { },
                     getAllActiveModules: async () => [],
                     getAllPassiveModules: async () => [],
                 };
@@ -120,10 +120,10 @@ jest.mock('ethers', () => {
             if (mockContractInstances.has(key)) return mockContractInstances.get(key);
             return {
                 getById: async () => ({ contractId: 1, name: 'LendingEngine', contractAddr: '0xOldContract' }),
-                deleteContract: async () => {},
-                registerContract: async () => {},
-                addActivePodBeforeMount: async () => {},
-                addPassivePodBeforeMount: async () => {},
+                deleteContract: async () => { },
+                registerContract: async () => { },
+                addActivePodBeforeMount: async () => { },
+                addPassivePodBeforeMount: async () => { },
                 getAllActiveModules: async () => [],
                 getAllPassiveModules: async () => [],
             };
@@ -144,9 +144,9 @@ jest.mock('../../libs/commands/cluster/auto/utils', () => ({
 beforeEach(() => {
     mockContractInstances.clear();
     jest.clearAllMocks();
-    jest.spyOn(console, 'log').mockImplementation(() => {});
-    jest.spyOn(console, 'warn').mockImplementation(() => {});
-    jest.spyOn(console, 'error').mockImplementation(() => {});
+    jest.spyOn(console, 'log').mockImplementation(() => { });
+    jest.spyOn(console, 'warn').mockImplementation(() => { });
+    jest.spyOn(console, 'error').mockImplementation(() => { });
 });
 
 afterEach(() => {
@@ -160,10 +160,10 @@ function setupMocks({ oldPods = { active: [], passive: [] }, newPods = { active:
     // cluster contract
     mockContractInstances.set('0xcluster', {
         getById: async () => ({ contractId: 210, name: 'LendingEngine', contractAddr: OLD_ADDR }),
-        deleteContract: async () => {},
-        registerContract: async () => {},
-        addActivePodBeforeMount: async () => {},
-        addPassivePodBeforeMount: async () => {},
+        deleteContract: async () => { },
+        registerContract: async () => { },
+        addActivePodBeforeMount: async () => { },
+        addPassivePodBeforeMount: async () => { },
         getAllActiveModules: async () => [],
         getAllPassiveModules: async () => [],
     });
@@ -201,7 +201,7 @@ describe('upgrade podSnapshot sync — real upgrade.js code path', () => {
         await upgrade({ rootDir: dir, args: { id: '210', contract: 'LendingEngineV2', yes: true } });
 
         const result = readProjectJson(dir);
-        const deprecated = result.fsca.alldeployedcontracts.find(r => r.address === OLD_ADDR);
+        const deprecated = result.arkheion.alldeployedcontracts.find(r => r.address === OLD_ADDR);
 
         expect(deprecated.status).toBe('deprecated');
         expect(deprecated.podSnapshot.active).toEqual([{ contractId: 110 }, { contractId: 111 }]);
@@ -227,7 +227,7 @@ describe('upgrade podSnapshot sync — real upgrade.js code path', () => {
         await upgrade({ rootDir: dir, args: { id: '210', contract: 'LendingEngineV2', yes: true } });
 
         const result = readProjectJson(dir);
-        const mounted = result.fsca.alldeployedcontracts.find(r => r.address === NEW_ADDR);
+        const mounted = result.arkheion.alldeployedcontracts.find(r => r.address === NEW_ADDR);
 
         expect(mounted.status).toBe('mounted');
         expect(mounted.podSnapshot.active).toEqual([{ contractId: 110 }, { contractId: 111 }]);
@@ -243,10 +243,10 @@ describe('upgrade podSnapshot sync — real upgrade.js code path', () => {
 
         mockContractInstances.set('0xcluster', {
             getById: async () => ({ contractId: 210, name: 'LendingEngine', contractAddr: OLD_ADDR }),
-            deleteContract: async () => {},
-            registerContract: async () => {},
-            addActivePodBeforeMount: async () => {},
-            addPassivePodBeforeMount: async () => {},
+            deleteContract: async () => { },
+            registerContract: async () => { },
+            addActivePodBeforeMount: async () => { },
+            addPassivePodBeforeMount: async () => { },
         });
         mockContractInstances.set(OLD_ADDR.toLowerCase(), {
             getAllActiveModules: async () => [],

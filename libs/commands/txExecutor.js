@@ -1,7 +1,7 @@
 /**
  * 统一交易执行器
  * 错误分类 + 指数退避重试
- * 审计日志：label/attempt/txHash/receipt/status 全量写文件日志（由 fsca-logger.js 拦截落盘）
+ * 审计日志：label/attempt/txHash/receipt/status 全量写文件日志（由 arkheion-logger.js 拦截落盘）
  */
 
 /**
