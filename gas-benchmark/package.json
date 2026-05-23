@@ -1,0 +1,9 @@
+{
+  "name": "gas-benchmark",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-ethers": "^4.0.12",
+    "ethers": "^6.16.0"
+  }
+}

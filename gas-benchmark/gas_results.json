@@ -1,0 +1,14 @@
+{
+  "deploy_arkheion": 4738900,
+  "deploy_diamond": 2391804,
+  "read_arkheion": 25892,
+  "read_diamond": 30958,
+  "write_arkheion": 71210,
+  "write_diamond": 77023,
+  "swap_arkheion": 56159,
+  "swap_diamond": 39988,
+  "upgrade_arkheion": 1871418,
+  "upgrade_diamond": 323172,
+  "add_module_arkheion": 1571463,
+  "add_module_diamond": 297774
+}
