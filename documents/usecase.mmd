@@ -1,0 +1,51 @@
+graph LR
+    Dev["开发者"]
+    Admin["集群管理员"]
+    Dev ~~~ Admin
+
+    subgraph boundary["Arkheion CLI 系统"]
+        UC1(["初始化项目"])       ~~~ UC2(["检查合约注解"])      ~~~ UC3(["自动部署合约集群"])
+        UC4(["查看集群拓扑"])     ~~~ UC5(["执行热替换升级"])    ~~~ UC6(["执行回滚"])
+        UC7(["发起多签交易"])     ~~~ UC8(["确认多签交易"])      ~~~ UC9(["查看日志和历史记录"])
+        UC1 ~~~ UC4 ~~~ UC7
+        UC2 ~~~ UC5 ~~~ UC8
+        UC3 ~~~ UC6 ~~~ UC9
+    end
+
+    Gov["多签治理成员"]
+    Auditor["审计人员"]
+    Gov ~~~ Auditor
+
+    Dev --- UC1
+    Dev --- UC2
+    Dev --- UC3
+    Dev --- UC5
+    Dev --- UC9
+
+    Admin --- UC3
+    Admin --- UC4
+    Admin --- UC5
+    Admin --- UC6
+    Admin --- UC7
+    Admin --- UC9
+
+    UC7 --- Gov
+    UC8 --- Gov
+
+    UC4 --- Auditor
+    UC9 --- Auditor
+
+    style Dev fill:#D6EAF8,stroke:#2980B9,color:#000
+    style Admin fill:#D5F5E3,stroke:#27AE60,color:#000
+    style Gov fill:#E8DAEF,stroke:#8E44AD,color:#000
+    style Auditor fill:#FDEBD0,stroke:#E67E22,color:#000
+
+    style UC1 fill:#FDFEFE,stroke:#5D6D7E,color:#000
+    style UC2 fill:#FDFEFE,stroke:#5D6D7E,color:#000
+    style UC3 fill:#FDFEFE,stroke:#5D6D7E,color:#000
+    style UC4 fill:#FDFEFE,stroke:#5D6D7E,color:#000
+    style UC5 fill:#FDFEFE,stroke:#5D6D7E,color:#000
+    style UC6 fill:#FDFEFE,stroke:#5D6D7E,color:#000
+    style UC7 fill:#FDFEFE,stroke:#5D6D7E,color:#000
+    style UC8 fill:#FDFEFE,stroke:#5D6D7E,color:#000
+    style UC9 fill:#FDFEFE,stroke:#5D6D7E,color:#000
